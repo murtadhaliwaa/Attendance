@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Employee {
+  id             String        @id @default(cuid())
+  employeeCode   String        @unique
+  name           String
+  department     String
+  position       String
+  phone          String?
+  faceDescriptor Float[]
+  hasFaceRegistered Boolean       @default(false)
+  emergencyCode  String        @unique
+  shiftId        String?
+  shift          WorkSchedule? @relation(fields: [shiftId], references: [id])
+  customEndTime  String?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  attendances    Attendance[]
+
+  @@index([isActive])
+  @@index([shiftId])
+  @@index([department])
+  @@index([isActive, shiftId])
+  @@index([isActive, hasFaceRegistered])
+}
+
+model Attendance {
+  id         String    @id @default(cuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date       DateTime  @db.Date
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     Status    @default(PRESENT)
+  method     Method    @default(FACE)
+  overtime   Int?
+  notes      String?
+  createdAt  DateTime  @default(now())
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@index([status])
+  @@index([date, status])
+  @@index([date, checkIn(sort: Desc)])
+  @@index([date, employeeId])
+}
+
+model WorkSchedule {
+  id                String     @id @default(cuid())
+  name              String
+  startTime         String
+  endTime           String
+  lateAfter         Int        @default(0)
+  earlyLeaveBefore  Int        @default(0)
+  isDefault         Boolean    @default(false)
+  employees         Employee[]
+  createdAt         DateTime   @default(now())
+
+  @@index([isDefault])
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SystemUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(HR_MANAGER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Alert {
+  id           String    @id @default(cuid())
+  type         AlertType
+  employeeId   String
+  employeeName String
+  message      String
+  isRead       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  @@index([isRead, createdAt(sort: Desc)])
+}
+
+enum Status {
+  PRESENT
+  ABSENT
+  LATE
+  EARLY_LEAVE
+}
+
+enum Method {
+  FACE
+  EMERGENCY_CODE
+}
+
+enum Role {
+  IT_ADMIN
+  HR_MANAGER
+  GENERAL_MANAGER
+}
+
+enum AlertType {
+  LATE
+  ABSENT
+  OVERTIME
+}

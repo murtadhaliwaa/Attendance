@@ -1,0 +1,6 @@
+{
+  "npm.autoDetect": "off",
+  "npm.enableScriptExplorer": false,
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false
+}

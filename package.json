@@ -1,0 +1,22 @@
+{
+  "name": "attendance-system-root",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix attendance-system run dev",
+    "build": "npm --prefix attendance-system run build",
+    "start": "npm --prefix attendance-system run start",
+    "lint": "npm --prefix attendance-system run lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "auth:setup": "npm --prefix attendance-system run auth:setup",
+    "auth:setup-production": "npm --prefix attendance-system run auth:setup-production",
+    "env:validate": "npm --prefix attendance-system run env:validate"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2",
+    "prisma": "^7.8.0"
+  }
+}

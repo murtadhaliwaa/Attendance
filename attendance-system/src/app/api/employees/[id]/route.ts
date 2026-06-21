@@ -1,0 +1,264 @@
+import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/api-auth";
+import { ensureDepartmentExists } from "@/lib/departments";
+import {
+  employeeListSelect,
+  serializeEmployee,
+} from "@/lib/employee-serialize";
+import { parseCustomEndTime, toEmployeeUncheckedUpdateInput } from "@/lib/employee-shift";
+import {
+  ensureShiftExists,
+  validateEmergencyCode,
+  validateEmployeeCode,
+} from "@/lib/employee-validation";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
+  try {
+    const employee = await prisma.employee.findUnique({
+      where: { id: params.id },
+      select: employeeListSelect,
+    });
+
+    if (!employee) {
+      return NextResponse.json(
+        { error: "الموظف غير موجود" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ employee: serializeEmployee(employee) });
+  } catch (error) {
+    console.error("GET /api/employees/[id]:", error);
+    return NextResponse.json(
+      { error: "فشل تحميل بيانات الموظف" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
+  try {
+    const existing = await prisma.employee.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "الموظف غير موجود" },
+        { status: 404 }
+      );
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "بيانات الطلب غير صالحة" },
+        { status: 400 }
+      );
+    }
+
+    const data: {
+      name?: string;
+      department?: string;
+      position?: string;
+      phone?: string | null;
+      employeeCode?: string;
+      emergencyCode?: string;
+      shiftId?: string | null;
+      customEndTime?: string | null;
+      isActive?: boolean;
+      faceDescriptor?: number[];
+    } = {};
+
+    if (body.clearFace === true) {
+      data.faceDescriptor = [];
+    }
+
+    if (body.name !== undefined) {
+      const name = String(body.name).trim();
+      if (!name) {
+        return NextResponse.json({ error: "اسم الموظف مطلوب" }, { status: 400 });
+      }
+      data.name = name;
+    }
+
+    if (body.department !== undefined) {
+      const department = String(body.department).trim();
+      if (!department) {
+        return NextResponse.json({ error: "القسم مطلوب" }, { status: 400 });
+      }
+      data.department = department;
+    }
+
+    if (body.position !== undefined) {
+      const position = String(body.position).trim();
+      if (!position) {
+        return NextResponse.json(
+          { error: "المسمى الوظيفي مطلوب" },
+          { status: 400 }
+        );
+      }
+      data.position = position;
+    }
+
+    if (body.phone !== undefined) {
+      data.phone = String(body.phone).trim() || null;
+    }
+
+    if (body.employeeCode !== undefined) {
+      const employeeCode = String(body.employeeCode).trim().toUpperCase();
+      const employeeCodeError = validateEmployeeCode(employeeCode);
+      if (employeeCodeError) {
+        return NextResponse.json({ error: employeeCodeError }, { status: 400 });
+      }
+      const duplicate = await prisma.employee.findFirst({
+        where: { employeeCode, NOT: { id: params.id } },
+      });
+      if (duplicate) {
+        return NextResponse.json(
+          { error: `رقم الموظف ${employeeCode} مستخدم مسبقاً` },
+          { status: 409 }
+        );
+      }
+      data.employeeCode = employeeCode;
+    }
+
+    if (body.emergencyCode !== undefined) {
+      const emergencyCode = String(body.emergencyCode).trim();
+      const emergencyCodeError = validateEmergencyCode(emergencyCode);
+      if (emergencyCodeError) {
+        return NextResponse.json({ error: emergencyCodeError }, { status: 400 });
+      }
+      const duplicate = await prisma.employee.findFirst({
+        where: { emergencyCode, NOT: { id: params.id } },
+      });
+      if (duplicate) {
+        return NextResponse.json(
+          { error: "الرمز الطارئ مستخدم مسبقاً" },
+          { status: 409 }
+        );
+      }
+      data.emergencyCode = emergencyCode;
+    }
+
+    if (body.shiftId !== undefined) {
+      const shiftId = String(body.shiftId).trim() || null;
+      if (shiftId && !(await ensureShiftExists(shiftId))) {
+        return NextResponse.json(
+          { error: "الشفت المحدد غير موجود" },
+          { status: 400 }
+        );
+      }
+      data.shiftId = shiftId;
+      if (!shiftId) {
+        data.customEndTime = null;
+      }
+    }
+
+    if (body.customEndTime !== undefined) {
+      try {
+        data.customEndTime = parseCustomEndTime(body.customEndTime);
+      } catch (error) {
+        return NextResponse.json(
+          {
+            error:
+              error instanceof Error ? error.message : "وقت الانصراف غير صالح",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (data.customEndTime && !(data.shiftId ?? existing.shiftId)) {
+      return NextResponse.json(
+        { error: "لا يمكن تحديد وقت انصراف مخصص بدون اختيار شفت" },
+        { status: 400 }
+      );
+    }
+
+    if (body.isActive !== undefined) {
+      data.isActive = Boolean(body.isActive);
+    }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json(
+        { error: "لا توجد بيانات للتحديث" },
+        { status: 400 }
+      );
+    }
+
+    if (data.department) {
+      await ensureDepartmentExists(data.department);
+    }
+
+    const employee = await prisma.employee.update({
+      where: { id: params.id },
+      data: toEmployeeUncheckedUpdateInput(data),
+      select: employeeListSelect,
+    });
+
+    return NextResponse.json({
+      message: `تم تحديث بيانات ${employee.name}`,
+      employee: serializeEmployee(employee),
+    });
+  } catch (error) {
+    console.error("PUT /api/employees/[id]:", error);
+    return NextResponse.json(
+      { error: "فشل تحديث بيانات الموظف" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
+  try {
+    const existing = await prisma.employee.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "الموظف غير موجود" },
+        { status: 404 }
+      );
+    }
+
+    const employee = await prisma.employee.update({
+      where: { id: params.id },
+      data: { isActive: false },
+      select: employeeListSelect,
+    });
+
+    return NextResponse.json({
+      message: `تم إيقاف ${employee.name} بنجاح`,
+      employee: serializeEmployee(employee),
+    });
+  } catch (error) {
+    console.error("DELETE /api/employees/[id]:", error);
+    return NextResponse.json(
+      { error: "فشل إيقاف الموظف" },
+      { status: 500 }
+    );
+  }
+}
