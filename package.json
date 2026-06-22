@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
+    "db:clear-employees": "npm --prefix attendance-system run db:clear-employees",
     "db:studio": "prisma studio",
     "auth:setup": "npm --prefix attendance-system run auth:setup",
     "auth:setup-production": "npm --prefix attendance-system run auth:setup-production",

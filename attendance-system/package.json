@@ -9,6 +9,7 @@
     "lint": "next lint",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:clear": "npx tsx scripts/clear-database.ts",
+    "db:clear-employees": "npx tsx scripts/clear-employees.ts",
     "models:download": "node scripts/download-face-models.js",
     "auth:setup": "npx tsx scripts/create-auth-users.ts",
     "auth:confirm": "npx tsx scripts/confirm-auth-users.ts",
