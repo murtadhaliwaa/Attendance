@@ -11,6 +11,8 @@ import {
   validateEmergencyCode,
   validateEmployeeCode,
 } from "@/lib/employee-validation";
+import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
+import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -83,10 +85,37 @@ export async function PUT(
       customEndTime?: string | null;
       isActive?: boolean;
       faceDescriptor?: number[];
+      hasFaceRegistered?: boolean;
     } = {};
 
     if (body.clearFace === true) {
       data.faceDescriptor = [];
+      data.hasFaceRegistered = false;
+    }
+
+    if (body.faceDescriptor !== undefined) {
+      if (!isValidFaceDescriptor(body.faceDescriptor)) {
+        return NextResponse.json(
+          { error: "بصمة الوجه غير صالحة. أعد التقاطها من الكاميرا" },
+          { status: 400 }
+        );
+      }
+
+      const duplicate = await findEmployeeByFaceDescriptor(
+        body.faceDescriptor,
+        params.id
+      );
+      if (duplicate) {
+        return NextResponse.json(
+          {
+            error: `بصمة الوجه مسجّلة مسبقاً للموظف ${duplicate.name} (${duplicate.employeeCode})`,
+          },
+          { status: 409 }
+        );
+      }
+
+      data.faceDescriptor = body.faceDescriptor;
+      data.hasFaceRegistered = true;
     }
 
     if (body.name !== undefined) {
@@ -244,20 +273,19 @@ export async function DELETE(
       );
     }
 
-    const employee = await prisma.employee.update({
-      where: { id: params.id },
-      data: { isActive: false },
-      select: employeeListSelect,
-    });
+    await prisma.$transaction([
+      prisma.alert.deleteMany({ where: { employeeId: params.id } }),
+      prisma.attendance.deleteMany({ where: { employeeId: params.id } }),
+      prisma.employee.delete({ where: { id: params.id } }),
+    ]);
 
     return NextResponse.json({
-      message: `تم إيقاف ${employee.name} بنجاح`,
-      employee: serializeEmployee(employee),
+      message: `تم حذف ${existing.name} نهائياً`,
     });
   } catch (error) {
     console.error("DELETE /api/employees/[id]:", error);
     return NextResponse.json(
-      { error: "فشل إيقاف الموظف" },
+      { error: "فشل حذف الموظف" },
       { status: 500 }
     );
   }

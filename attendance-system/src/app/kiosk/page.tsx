@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 
 export const metadata = {
-  title: "الكشك | نظام الحضور والانصراف",
+  title: "الحضور و الانصراف | نظام الحضور والانصراف",
 };
 
 export default function KioskHubPage() {
@@ -22,7 +22,7 @@ export default function KioskHubPage() {
         <h1 className="text-3xl font-bold text-text-primary">
           نظام الحضور والانصراف
         </h1>
-        <p className="mt-2 text-text-secondary">اختر الكشك المناسب</p>
+        <p className="mt-2 text-text-secondary">اختر الحضور أو الانصراف</p>
       </div>
 
       <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
@@ -32,7 +32,7 @@ export default function KioskHubPage() {
               <div className="mx-auto mb-2 flex size-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300 transition-colors group-hover:bg-emerald-500/25">
                 <LogIn className="size-7" />
               </div>
-              <CardTitle className="text-xl">كشك الحضور</CardTitle>
+              <CardTitle className="text-xl">الحضور</CardTitle>
               <CardDescription className="text-text-secondary">
                 لتسجيل الدخول عند بداية الدوام
               </CardDescription>
@@ -51,7 +51,7 @@ export default function KioskHubPage() {
               <div className="mx-auto mb-2 flex size-14 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-300 transition-colors group-hover:bg-sky-500/25">
                 <LogOut className="size-7" />
               </div>
-              <CardTitle className="text-xl">كشك الانصراف</CardTitle>
+              <CardTitle className="text-xl">الانصراف</CardTitle>
               <CardDescription className="text-text-secondary">
                 لتسجيل الخروج عند نهاية الدوام
               </CardDescription>

@@ -26,7 +26,7 @@ const navItems = [
   { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/employees", label: "الموظفون", icon: Users },
   { href: "/dashboard/reports", label: "التقارير", icon: FileBarChart },
-  { href: "/kiosk", label: "الكشك", icon: Monitor },
+  { href: "/kiosk", label: "الحضور و الانصراف", icon: Monitor },
   { href: "/dashboard/settings", label: "الإعدادات", icon: Settings },
 ];
 

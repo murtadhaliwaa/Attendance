@@ -22,9 +22,9 @@ const dashboardItems = [
 ];
 
 const kioskItems = [
-  { href: "/kiosk", label: "اختيار الكشك", icon: Monitor, exact: true },
-  { href: "/kiosk/checkin", label: "كشك الحضور", icon: LogIn },
-  { href: "/kiosk/checkout", label: "كشك الانصراف", icon: LogOut },
+  { href: "/kiosk", label: "الحضور و الانصراف", icon: Monitor, exact: true },
+  { href: "/kiosk/checkin", label: "الحضور", icon: LogIn },
+  { href: "/kiosk/checkout", label: "الانصراف", icon: LogOut },
 ];
 
 function NavLink({
@@ -81,7 +81,7 @@ export function KioskSidebar() {
 
         <div className="space-y-0.5 border-t border-bg-border pt-3">
           <p className="px-3 py-1.5 text-xs font-medium text-text-muted">
-            الكشك
+            الحضور و الانصراف
           </p>
           {kioskItems.map((item) => (
             <NavLink key={item.href} {...item} />

@@ -5,13 +5,13 @@ export const KIOSK_MODE_LABELS: Record<
   { title: string; subtitle: string; action: string; scanning: string }
 > = {
   checkin: {
-    title: "كشك الحضور",
+    title: "الحضور",
     subtitle: "قف أمام الكاميرا لتسجيل حضورك",
     action: "تسجيل حضور",
     scanning: "جاري تسجيل الحضور...",
   },
   checkout: {
-    title: "كشك الانصراف",
+    title: "الانصراف",
     subtitle: "قف أمام الكاميرا لتسجيل انصرافك",
     action: "تسجيل انصراف",
     scanning: "جاري تسجيل الانصراف...",

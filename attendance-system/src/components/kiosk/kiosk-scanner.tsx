@@ -106,7 +106,7 @@ function blockMessage(
     return `أنت ${employeeName}، حضورك مسجّل مسبقاً (${today.checkInTime ?? ""})`;
   }
   if (reason === "no_checkin") {
-    return `أنت ${employeeName}، سجّل حضورك أولاً من كشك الحضور`;
+    return `أنت ${employeeName}، سجّل حضورك أولاً من صفحة الحضور`;
   }
   return `أنت ${employeeName}، انصرافك مسجّل مسبقاً (${today.checkOutTime ?? ""})`;
 }
@@ -150,7 +150,7 @@ function ResultSidePanel({
         {result.action === "checkout" && "قام بتسجيل الانصراف"}
         {result.action === "already_checkin" && "الحضور مسجّل مسبقاً"}
         {result.action === "no_checkin" &&
-          "يجب تسجيل الحضور من كشك الحضور أولاً"}
+          "يجب تسجيل الحضور أولاً"}
         {result.action === "already_done" && "الانصراف مسجّل مسبقاً"}
       </p>
       {result.time && (
@@ -742,7 +742,7 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
                 accentActionClass
               )}
             >
-            تغيير الكشك
+            الحضور والانصراف
             </Link>
           </div>
 

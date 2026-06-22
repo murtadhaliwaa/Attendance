@@ -1,4 +1,4 @@
-/** نفس عتبة التطابق المستخدمة في الكشك */
+/** نفس عتبة التطابق المستخدمة في الحضور والانصراف */
 export const FACE_MATCH_THRESHOLD = 0.58;
 
 export function isValidFaceDescriptor(

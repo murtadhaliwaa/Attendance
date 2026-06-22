@@ -18,6 +18,7 @@ export type EmployeeWriteFields = {
   customEndTime?: string | null;
   isActive?: boolean;
   faceDescriptor?: number[];
+  hasFaceRegistered?: boolean;
   shiftId?: string | null;
 };
 

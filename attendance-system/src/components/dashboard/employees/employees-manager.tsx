@@ -12,6 +12,7 @@ import {
   UserCheck,
   RotateCcw,
   UserMinus,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ export function EmployeesManager({
   const [deactivateTarget, setDeactivateTarget] = useState<EmployeeRow | null>(
     null
   );
+  const [deleteTarget, setDeleteTarget] = useState<EmployeeRow | null>(null);
   const [clearFaceTarget, setClearFaceTarget] = useState<EmployeeRow | null>(
     null
   );
@@ -192,7 +194,7 @@ export function EmployeesManager({
         res
       );
       if (!res.ok) throw new Error(data.error ?? "فشل مسح بصمة الوجه");
-      toast.success(`تم مسح بصمة وجه ${employee.name}. سجّل الوجه من الكشك`);
+      toast.success(`تم مسح بصمة وجه ${employee.name}. سجّل الوجه من صفحة الحضور والانصراف`);
       setClearFaceTarget(null);
     }, `face-${employee.id}`);
   }
@@ -200,14 +202,30 @@ export function EmployeesManager({
   async function deactivateEmployee(employee: EmployeeRow) {
     await runAction(employee.id, async () => {
       const res = await fetch(`/api/employees/${employee.id}`, {
-        method: "DELETE",
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: false }),
       });
       const data = await parseJsonResponse<{ message?: string; error?: string }>(
         res
       );
       if (!res.ok) throw new Error(data.error ?? "فشل إيقاف الموظف");
-      toast.success(data.message);
+      toast.success(data.message ?? `تم إيقاف ${employee.name}`);
       setDeactivateTarget(null);
+    }, `deactivate-${employee.id}`);
+  }
+
+  async function deleteEmployee(employee: EmployeeRow) {
+    await runAction(employee.id, async () => {
+      const res = await fetch(`/api/employees/${employee.id}`, {
+        method: "DELETE",
+      });
+      const data = await parseJsonResponse<{ message?: string; error?: string }>(
+        res
+      );
+      if (!res.ok) throw new Error(data.error ?? "فشل حذف الموظف");
+      toast.success(data.message);
+      setDeleteTarget(null);
     }, `delete-${employee.id}`);
   }
 
@@ -377,13 +395,19 @@ export function EmployeesManager({
                           <DropdownMenuSeparator />
                           {employee.isActive && (
                             <DropdownMenuItem
-                              variant="destructive"
                               onClick={() => setDeactivateTarget(employee)}
                             >
                               <UserX />
                               إيقاف الموظف
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => setDeleteTarget(employee)}
+                          >
+                            <Trash2 />
+                            حذف الموظف
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -427,6 +451,7 @@ export function EmployeesManager({
         open={formOpen}
         onOpenChange={setFormOpen}
         employee={editingEmployee}
+        employees={initialEmployees}
         shifts={shifts}
         departments={departmentOptions}
         positions={positionOptions}
@@ -444,7 +469,7 @@ export function EmployeesManager({
             <DialogTitle>مسح بصمة الوجه</DialogTitle>
             <DialogDescription>
               هل تريد مسح بصمة وجه {clearFaceTarget?.name}؟ سيحتاج الموظف إلى
-              تسجيل وجهه من جديد في الكشك.
+              تسجيل وجهه من جديد في الحضور والانصراف.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mx-0 mb-0 shrink-0 flex-row justify-end gap-2 border-t-0 bg-transparent p-0 pt-4">
@@ -477,7 +502,7 @@ export function EmployeesManager({
             <DialogTitle>إيقاف الموظف</DialogTitle>
             <DialogDescription>
               هل تريد إيقاف {deactivateTarget?.name}؟ سيُحتفظ بسجلات الحضور
-              السابقة ولن يتمكن من التسجيل في الكشك.
+              السابقة ولن يتمكن من التسجيل في الحضور والانصراف.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mx-0 mb-0 shrink-0 flex-row justify-end gap-2 border-t-0 bg-transparent p-0 pt-4">
@@ -496,6 +521,37 @@ export function EmployeesManager({
               }
             >
               تأكيد الإيقاف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>حذف الموظف</DialogTitle>
+            <DialogDescription>
+              هل تريد حذف {deleteTarget?.name} نهائياً؟ سيتم حذف جميع سجلات
+              حضوره وتنبيهاته ولا يمكن التراجع عن هذا الإجراء.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mx-0 mb-0 shrink-0 flex-row justify-end gap-2 border-t-0 bg-transparent p-0 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={!!actionLoading}
+            >
+              إلغاء
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!!actionLoading}
+              onClick={() => deleteTarget && deleteEmployee(deleteTarget)}
+            >
+              تأكيد الحذف
             </Button>
           </DialogFooter>
         </DialogContent>

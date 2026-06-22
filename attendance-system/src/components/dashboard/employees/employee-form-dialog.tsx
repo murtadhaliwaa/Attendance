@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Briefcase, IdCard, Loader2, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Briefcase, IdCard, Loader2, ScanFace, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,7 @@ import {
   emptyEmployeeForm,
 } from "@/lib/employee-types";
 import { CustomEndTimePicker } from "@/components/dashboard/employees/custom-end-time-picker";
+import { FaceEnrollmentPanel } from "@/components/dashboard/employees/face-enrollment-panel";
 import { SelectionCard } from "@/components/dashboard/selection-card";
 import { formatShiftRangeLabel } from "@/lib/schedule-utils";
 
@@ -29,6 +30,7 @@ interface EmployeeFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employee: EmployeeRow | null;
+  employees: EmployeeRow[];
   shifts: ShiftOption[];
   departments: string[];
   positions: string[];
@@ -92,6 +94,7 @@ export function EmployeeFormDialog({
   open,
   onOpenChange,
   employee,
+  employees,
   shifts,
   departments,
   positions,
@@ -102,6 +105,26 @@ export function EmployeeFormDialog({
   const isEdit = !!employee;
   const [form, setForm] = useState<EmployeeFormData>(emptyEmployeeForm());
   const [saving, setSaving] = useState(false);
+  const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
+  const [clearFace, setClearFace] = useState(false);
+
+  const matchedEmployeeWithFace = useMemo(() => {
+    if (isEdit) return null;
+    const name = form.name.trim().toLowerCase();
+    if (!name) return null;
+    return (
+      employees.find(
+        (row) =>
+          row.isActive &&
+          row.hasFace &&
+          row.name.trim().toLowerCase() === name
+      ) ?? null
+    );
+  }, [employees, form.name, isEdit]);
+
+  const hasExistingFace = isEdit
+    ? !!employee?.hasFace
+    : !!matchedEmployeeWithFace;
 
   const selectedShift = shifts.find((shift) => shift.id === form.shiftId);
 
@@ -114,6 +137,8 @@ export function EmployeeFormDialog({
         ...data,
         shiftId: data.shiftId || shifts[0]?.id || "",
       });
+      setFaceDescriptor(null);
+      setClearFace(false);
     } else {
       setForm({
         ...emptyEmployeeForm(""),
@@ -121,6 +146,8 @@ export function EmployeeFormDialog({
         emergencyCode: suggestedEmergencyCode ?? "",
         shiftId: shifts[0]?.id ?? "",
       });
+      setFaceDescriptor(null);
+      setClearFace(false);
     }
   }, [open, employee, suggestedCode, suggestedEmergencyCode, shifts, departments]);
 
@@ -150,6 +177,8 @@ export function EmployeeFormDialog({
         emergencyCode: form.emergencyCode.trim(),
         shiftId: form.shiftId,
         customEndTime: form.customEndTime.trim() || null,
+        ...(faceDescriptor ? { faceDescriptor } : {}),
+        ...(clearFace ? { clearFace: true } : {}),
       };
 
       const res = await fetch(
@@ -188,8 +217,8 @@ export function EmployeeFormDialog({
           </DialogTitle>
           <DialogDescription className="text-text-secondary">
             {isEdit
-              ? "عدّل بيانات الموظف واحفظ التغييرات"
-              : "أدخل البيانات الأساسية الآن، وتسجيل الوجه يتم لاحقاً من الكشك"}
+              ? "عدّل بيانات الموظف أو سجّل/حدّث بصمة الوجه من الكاميرا"
+              : "أدخل البيانات الأساسية — يمكنك تسجيل بصمة الوجه مباشرة أو لاحقاً من الكiosk"}
           </DialogDescription>
         </DialogHeader>
 
@@ -197,7 +226,7 @@ export function EmployeeFormDialog({
           <form id="employee-form" onSubmit={handleSubmit} className="space-y-4">
             <FormSection
               title="التعريف"
-              description="رقم الموظف للإدارة والرمز الطارئ للكشك عند تعذّر التعرف على الوجه"
+              description="رقم الموظف للإدارة والرمز الطارئ في الحضور والانصراف عند تعذّر التعرف على الوجه"
               icon={IdCard}
             >
               <div className="grid gap-3 sm:grid-cols-2">
@@ -236,7 +265,7 @@ export function EmployeeFormDialog({
                       )
                     }
                   />
-                  <FieldHint>6 أرقام — للطوارئ في الكشك</FieldHint>
+                  <FieldHint>6 أرقام — للطوارئ في الحضور والانصراف</FieldHint>
                 </div>
               </div>
             </FormSection>
@@ -324,7 +353,7 @@ export function EmployeeFormDialog({
                   <Label>الشفت</Label>
                   <p className="text-xs text-text-muted">
                     يحدد أوقات التأخير والانصراف المبكر لهذا الموظف في
-                    الكشك والتقارير.
+                    الحضور والانصراف والتقارير.
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {shifts.map((shift) => (
@@ -357,6 +386,24 @@ export function EmployeeFormDialog({
                   )}
                 </div>
               </div>
+            </FormSection>
+
+            <FormSection
+              title="بصمة الوجه"
+              description="اختياري — لتسجيل الحضور بالكاميرا في الحضور والانصراف"
+              icon={ScanFace}
+            >
+              <FaceEnrollmentPanel
+                active={open}
+                hasExistingFace={hasExistingFace}
+                allowManageExisting={isEdit}
+                captured={faceDescriptor}
+                cleared={clearFace}
+                excludeEmployeeId={employee?.id}
+                onCaptured={setFaceDescriptor}
+                onClearExisting={() => setClearFace(true)}
+                onUndoClear={() => setClearFace(false)}
+              />
             </FormSection>
 
             {isEdit && (

@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
   if (!existing?.checkIn) {
     return NextResponse.json(
-      { error: "لم يتم تسجيل الحضور اليوم — استخدم كشك الحضور أولاً" },
+      { error: "لم يتم تسجيل الحضور اليوم — سجّل الحضور أولاً" },
       { status: 400 }
     );
   }

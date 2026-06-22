@@ -17,7 +17,7 @@ export function requireKioskAuth(request: Request): NextResponse | null {
   const expected = getKioskApiKey();
   if (!expected) {
     console.error("KIOSK_API_KEY is not configured");
-    return NextResponse.json({ error: "الكشك غير مهيأ" }, { status: 503 });
+    return NextResponse.json({ error: "الحضور والانصراف غير مهيأ" }, { status: 503 });
   }
 
   const provided = request.headers.get("x-kiosk-key")?.trim() ?? "";

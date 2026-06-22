@@ -54,7 +54,7 @@ export default function LoginPage() {
             href="/kiosk"
             className="text-blue-primary transition-colors hover:text-blue-dark"
           >
-            الانتقال إلى الكشك
+            الانتقال إلى الحضور والانصراف
           </Link>
         </p>
       </div>

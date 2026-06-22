@@ -12,6 +12,8 @@ import {
   validateEmergencyCode,
   validateEmployeeCode,
 } from "@/lib/employee-validation";
+import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
+import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
@@ -163,6 +165,33 @@ export async function POST(request: Request) {
 
     await ensureDepartmentExists(department);
 
+    const faceDescriptor = body.faceDescriptor;
+    const hasFace =
+      faceDescriptor !== undefined && isValidFaceDescriptor(faceDescriptor);
+
+    if (
+      faceDescriptor !== undefined &&
+      faceDescriptor !== null &&
+      !hasFace
+    ) {
+      return NextResponse.json(
+        { error: "بصمة الوجه غير صالحة. أعد التقاطها من الكاميرا" },
+        { status: 400 }
+      );
+    }
+
+    if (hasFace) {
+      const duplicate = await findEmployeeByFaceDescriptor(faceDescriptor);
+      if (duplicate) {
+        return NextResponse.json(
+          {
+            error: `بصمة الوجه مسجّلة مسبقاً للموظف ${duplicate.name} (${duplicate.employeeCode})`,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const employee = await prisma.employee.create({
       data: {
         employeeCode,
@@ -173,8 +202,8 @@ export async function POST(request: Request) {
         emergencyCode,
         customEndTime,
         isActive,
-        faceDescriptor: [],
-        hasFaceRegistered: false,
+        faceDescriptor: hasFace ? faceDescriptor : [],
+        hasFaceRegistered: hasFace,
         ...(shiftId ? { shift: { connect: { id: shiftId } } } : {}),
       },
       select: employeeListSelect,

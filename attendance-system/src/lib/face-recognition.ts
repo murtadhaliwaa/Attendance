@@ -3,7 +3,7 @@ import { getVideoDetectionCanvas } from "@/lib/camera-frame";
 
 const MODEL_URL = "/models";
 
-// إعدادات التعرف — مُحسَّنة للسرعة عند الكشك
+// إعدادات التعرف — مُحسَّنة للسرعة في الحضور والانصراف
 export const MATCH_THRESHOLD = 0.58;
 export const STRONG_MATCH_DISTANCE = 0.42;
 export const MIN_GAP_FROM_SECOND = 0.06;
