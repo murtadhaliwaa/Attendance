@@ -33,7 +33,7 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-bg-border bg-bg-sidebar px-2 py-2 lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-bg-border bg-bg-sidebar/95 px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
       {navItems.map((item) => {
         const isActive = isNavItemActive(pathname, item.href, item.exact);
 
@@ -42,12 +42,14 @@ export function MobileNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-medium",
-              isActive ? "text-text-primary" : "text-text-muted"
+              "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-[10px] font-medium transition-colors",
+              isActive
+                ? "bg-bg-elevated text-text-primary"
+                : "text-text-muted"
             )}
           >
-            <item.icon className="size-4" />
-            {item.label}
+            <item.icon className="size-[18px]" />
+            <span className="truncate">{item.label}</span>
           </Link>
         );
       })}

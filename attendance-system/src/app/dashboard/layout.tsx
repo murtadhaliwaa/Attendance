@@ -31,12 +31,14 @@ export default async function DashboardLayout({
   const userEmail = user.email;
 
   return (
-    <div className="flex min-h-screen bg-bg-page">
+    <div className="flex min-h-screen overflow-x-hidden bg-bg-page">
       <DashboardSidebar />
 
-      <div className="flex min-h-screen flex-1 flex-col pb-20 lg:pb-0">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
         <DashboardHeader userName={userName} userEmail={userEmail} />
-        <main className="flex-1 px-4 py-5 sm:px-6">{children}</main>
+        <main className="min-w-0 flex-1 px-3 py-4 sm:px-6 sm:py-5">
+          {children}
+        </main>
       </div>
 
       <MobileNav />
