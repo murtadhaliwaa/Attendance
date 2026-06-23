@@ -2,39 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Fingerprint,
-  LayoutDashboard,
-  Monitor,
-  Settings,
-  Users,
-  FileBarChart,
-} from "lucide-react";
+import { Fingerprint } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-function isNavItemActive(
-  pathname: string,
-  href: string,
-  exact?: boolean
-) {
-  if (exact) return pathname === href;
-  if (href === "/kiosk") return pathname.startsWith("/kiosk");
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-const navItems = [
-  { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/employees", label: "الموظفون", icon: Users },
-  { href: "/dashboard/reports", label: "التقارير", icon: FileBarChart },
-  { href: "/kiosk", label: "الحضور و الانصراف", icon: Monitor },
-  { href: "/dashboard/settings", label: "الإعدادات", icon: Settings },
-];
+import { useUserRole } from "@/components/dashboard/role-context";
+import {
+  getDashboardNavItems,
+  isDashboardNavActive,
+} from "@/lib/dashboard-nav";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
+  const role = useUserRole();
+  const navItems = getDashboardNavItems(role);
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 self-start border-l border-bg-border bg-bg-sidebar lg:flex lg:flex-col">
+    <aside className="fixed inset-y-0 start-0 z-30 hidden w-56 flex-col border-l border-bg-border bg-bg-sidebar lg:flex">
       <div className="flex items-center gap-2.5 border-b border-bg-border px-4 py-4">
         <Fingerprint className="size-5 text-text-muted" />
         <p className="text-sm text-text-primary">نظام الحضور</p>
@@ -42,7 +24,7 @@ export function DashboardSidebar() {
 
       <nav className="flex-1 space-y-0.5 p-2">
         {navItems.map((item) => {
-        const isActive = isNavItemActive(pathname, item.href, item.exact);
+          const isActive = isDashboardNavActive(pathname, item.href, item.exact);
 
           return (
             <Link

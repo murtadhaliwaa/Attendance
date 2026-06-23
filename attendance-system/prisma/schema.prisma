@@ -77,7 +77,7 @@ model SystemUser {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
-  role      Role     @default(HR_MANAGER)
+  role      Role     @default(MANAGER)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -108,9 +108,8 @@ enum Method {
 }
 
 enum Role {
-  IT_ADMIN
-  HR_MANAGER
-  GENERAL_MANAGER
+  MANAGER
+  INQUIRY_CLERK
 }
 
 enum AlertType {

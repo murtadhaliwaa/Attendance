@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireAnyPermission } from "@/lib/api-auth";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
 import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 
 export async function POST(request: Request) {
-  const auth = await requireAuth();
+  const auth = await requireAnyPermission([
+    "employees:create",
+    "employees:update",
+  ]);
   if (auth.error) return auth.error;
 
   try {

@@ -6,7 +6,19 @@ export function PwaRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {
+    async function syncServiceWorker() {
+      if (process.env.NODE_ENV !== "production") {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(
+          registrations.map((registration) => registration.unregister())
+        );
+        return;
+      }
+
+      await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    }
+
+    syncServiceWorker().catch(() => {
       // تجاهل — PWA اختياري
     });
   }, []);

@@ -7,6 +7,5 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener("fetch", (event) => {
-  event.respondWith(fetch(event.request));
-});
+/* لا نعترض طلبات fetch — الاعتراض بدون تخزين مؤقت يسبب Failed to fetch
+   أثناء التطوير وعند انقطاع الشبكة. المتصفح يتولى التحميل مباشرة. */

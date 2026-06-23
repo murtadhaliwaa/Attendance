@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
 import { ensureDepartmentExists } from "@/lib/departments";
 import {
   employeeListSelect,
@@ -19,7 +19,7 @@ export async function GET(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await requireAuth();
+  const auth = await requirePermission("employees:read");
   if (auth.error) return auth.error;
 
   try {
@@ -49,7 +49,7 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await requireAuth();
+  const auth = await requirePermission("employees:update");
   if (auth.error) return auth.error;
 
   try {
@@ -258,7 +258,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await requireAuth();
+  const auth = await requirePermission("employees:delete");
   if (auth.error) return auth.error;
 
   try {

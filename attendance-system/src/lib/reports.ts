@@ -1,10 +1,19 @@
 import { eachDayOfInterval, format } from "date-fns";
 import { arSA } from "date-fns/locale";
 import type { Status } from "@prisma/client";
+import { getShiftTimingsBundle } from "@/lib/attendance-reconcile";
+import { formatTimeAr } from "@/lib/attendance-utils";
+import { employeeShiftSelect } from "@/lib/employee-shift";
 import { prisma } from "@/lib/prisma";
 import { toDateKey, isFutureDateKey, isTodayDateKey } from "@/lib/app-timezone";
-import { formatTimeAr } from "@/lib/attendance-utils";
 import { parseDateRangeStrings } from "@/lib/report-week";
+import {
+  computeLateMinutes,
+  formatLateDetails,
+  sumLateMinutes,
+  type EmployeeShiftInfo,
+  type LateDayDetail,
+} from "@/lib/report-late-details";
 import type {
   EmployeeDayRecord,
   EmployeeDayStatus,
@@ -27,19 +36,21 @@ function resolveDayWithoutRecord(dayKey: string): EmployeeDayStatus {
 
 function summarizeEmployeeWeek(
   employeeId: string,
-  employee: {
+  employee: EmployeeShiftInfo & {
     employeeCode: string;
     name: string;
     department: string;
   },
   days: Date[],
-  attendanceByDate: Map<string, { status: Status }>
+  attendanceByDate: Map<string, { status: Status; checkIn: Date | null }>,
+  shiftContext: Awaited<ReturnType<typeof getShiftTimingsBundle>>
 ): WeeklyEmployeeSummary {
   let present = 0;
   let late = 0;
   let earlyLeave = 0;
   let absent = 0;
   let workingDays = 0;
+  const lateDays: LateDayDetail[] = [];
 
   for (const day of days) {
     const dayKey = toDateKey(day);
@@ -59,8 +70,23 @@ function summarizeEmployeeWeek(
     }
 
     if (record.status === "PRESENT") present += 1;
-    else if (record.status === "LATE") late += 1;
-    else if (record.status === "EARLY_LEAVE") earlyLeave += 1;
+    else if (record.status === "LATE") {
+      late += 1;
+      if (record.checkIn) {
+        const lateMinutes = computeLateMinutes(
+          employee,
+          record.checkIn,
+          shiftContext
+        );
+        if (lateMinutes > 0) {
+          lateDays.push({
+            date: dayKey,
+            dayName: format(day, "EEEE", { locale: arSA }),
+            lateMinutes,
+          });
+        }
+      }
+    } else if (record.status === "EARLY_LEAVE") earlyLeave += 1;
     else if (record.status === "ABSENT") absent += 1;
   }
 
@@ -74,6 +100,9 @@ function summarizeEmployeeWeek(
     earlyLeave,
     absent,
     workingDays,
+    lateDetails: formatLateDetails(lateDays),
+    lateDays,
+    totalLateMinutes: sumLateMinutes(lateDays),
   };
 }
 
@@ -84,7 +113,7 @@ export async function getWeeklyReport(
   const days = eachDayOfInterval({ start: from, end: to });
   const shiftId = filters.shiftId?.trim() || undefined;
 
-  const [employees, shift] = await Promise.all([
+  const [employees, shift, shiftContext] = await Promise.all([
     prisma.employee.findMany({
       where: {
         isActive: true,
@@ -95,6 +124,8 @@ export async function getWeeklyReport(
         name: true,
         employeeCode: true,
         department: true,
+        customEndTime: true,
+        shift: { select: employeeShiftSelect },
       },
       orderBy: { name: "asc" },
     }),
@@ -104,6 +135,7 @@ export async function getWeeklyReport(
           select: { name: true, startTime: true, endTime: true },
         })
       : Promise.resolve(null),
+    getShiftTimingsBundle(),
   ]);
 
   if (employees.length === 0) {
@@ -127,10 +159,14 @@ export async function getWeeklyReport(
       employeeId: true,
       date: true,
       status: true,
+      checkIn: true,
     },
   });
 
-  const attendanceByEmployee = new Map<string, Map<string, { status: Status }>>();
+  const attendanceByEmployee = new Map<
+    string,
+    Map<string, { status: Status; checkIn: Date | null }>
+  >();
 
   for (const record of attendances) {
     const dayKey = toDateKey(record.date);
@@ -139,7 +175,7 @@ export async function getWeeklyReport(
     }
     attendanceByEmployee
       .get(record.employeeId)!
-      .set(dayKey, { status: record.status });
+      .set(dayKey, { status: record.status, checkIn: record.checkIn });
   }
 
   const summaries = employees.map((employee) =>
@@ -147,7 +183,8 @@ export async function getWeeklyReport(
       employee.id,
       employee,
       days,
-      attendanceByEmployee.get(employee.id) ?? new Map()
+      attendanceByEmployee.get(employee.id) ?? new Map(),
+      shiftContext
     )
   );
 
@@ -195,16 +232,21 @@ export async function getEmployeeReport(
   employeeId: string,
   filters: ReportFilters = {}
 ): Promise<EmployeeReportData> {
-  const employee = await prisma.employee.findFirst({
-    where: { id: employeeId, isActive: true },
-    select: {
-      id: true,
-      name: true,
-      employeeCode: true,
-      department: true,
-      position: true,
-    },
-  });
+  const [employee, shiftContext] = await Promise.all([
+    prisma.employee.findFirst({
+      where: { id: employeeId, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        employeeCode: true,
+        department: true,
+        position: true,
+        customEndTime: true,
+        shift: { select: employeeShiftSelect },
+      },
+    }),
+    getShiftTimingsBundle(),
+  ]);
 
   if (!employee) {
     throw new Error("الموظف غير موجود");
@@ -236,6 +278,16 @@ export async function getEmployeeReport(
       const record = attendanceByDate.get(dayKey);
 
       if (record) {
+        let lateMinutes: number | null = null;
+        if (record.status === "LATE" && record.checkIn) {
+          const minutes = computeLateMinutes(
+            employee,
+            record.checkIn,
+            shiftContext
+          );
+          lateMinutes = minutes > 0 ? minutes : null;
+        }
+
         return {
           date: dayKey,
           dayName: format(day, "EEEE", { locale: arSA }),
@@ -243,6 +295,7 @@ export async function getEmployeeReport(
           checkIn: record.checkIn ? formatTimeAr(record.checkIn) : null,
           checkOut: record.checkOut ? formatTimeAr(record.checkOut) : null,
           isWorkingDay: true,
+          lateMinutes,
         };
       }
 
@@ -253,6 +306,7 @@ export async function getEmployeeReport(
         checkIn: null,
         checkOut: null,
         isWorkingDay: true,
+        lateMinutes: null,
       };
     }
   );

@@ -20,17 +20,12 @@ const PRODUCTION_USERS = [
   {
     email: "hr@company.com",
     name: "سارة القحطاني",
-    role: Role.HR_MANAGER,
+    role: Role.MANAGER,
   },
   {
-    email: "ahmed@company.com",
-    name: "أحمد العتيبي",
-    role: Role.IT_ADMIN,
-  },
-  {
-    email: "mohammed@company.com",
-    name: "محمد الشمري",
-    role: Role.GENERAL_MANAGER,
+    email: "inquiry@company.com",
+    name: "فهد العنزي",
+    role: Role.INQUIRY_CLERK,
   },
 ] as const;
 

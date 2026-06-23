@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { getDepartmentRows } from "@/lib/departments";
 
 export async function GET() {
-  const auth = await requireAuth();
+  const auth = await requirePermission("settings:read");
   if (auth.error) return auth.error;
 
   try {
@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAuth();
+  const auth = await requirePermission("settings:write");
   if (auth.error) return auth.error;
 
   try {

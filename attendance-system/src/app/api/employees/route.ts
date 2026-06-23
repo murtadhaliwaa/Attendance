@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
 import { nextEmployeeCode, nextEmergencyCode } from "@/lib/employee-codes";
 import { ensureDepartmentExists } from "@/lib/departments";
 import {
@@ -17,7 +17,7 @@ import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
-  const auth = await requireAuth();
+  const auth = await requirePermission("employees:read");
   if (auth.error) return auth.error;
 
   try {
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAuth();
+  const auth = await requirePermission("employees:create");
   if (auth.error) return auth.error;
 
   try {

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Download,
   FileSpreadsheet,
+  FileText,
   Loader2,
   Search,
   X,
@@ -25,10 +26,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseJsonResponse } from "@/lib/api-utils";
+import { formatLateDuration } from "@/lib/attendance-utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   exportEmployeeReportExcel,
+  exportEmployeeReportPdf,
   exportWeeklyReportExcel,
+  exportWeeklyReportPdf,
 } from "@/lib/report-export";
+import type { ReportFileFormat } from "@/lib/report-export-data";
 import { formatReportPeriod, getWeekStringsByOffset } from "@/lib/report-week";
 import type { EmployeeReportData, WeeklyReportData } from "@/lib/report-types";
 import type { ShiftOption } from "@/lib/employee-types";
@@ -37,6 +48,7 @@ import { DayStatusBadge } from "@/components/dashboard/day-status-badge";
 import { SelectionCard } from "@/components/dashboard/selection-card";
 import { TimeCell } from "@/components/dashboard/time-cell";
 import { cn } from "@/lib/utils";
+import { usePermission } from "@/components/dashboard/role-context";
 
 async function fetchEmployeeReport(
   employeeId: string,
@@ -61,12 +73,18 @@ function EmployeeReportDetail({
   loading,
   weekFrom,
   weekTo,
+  exportingFormat,
+  canExport,
+  onExport,
   onClose,
 }: {
   employeeReport: EmployeeReportData | null;
   loading: boolean;
   weekFrom: string;
   weekTo: string;
+  exportingFormat: ReportFileFormat | null;
+  canExport: boolean;
+  onExport: (format: ReportFileFormat) => void;
   onClose: () => void;
 }) {
   return (
@@ -88,16 +106,36 @@ function EmployeeReportDetail({
         </div>
 
         <div className="flex gap-2">
-          {employeeReport && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void exportEmployeeReportExcel(employeeReport)}
-              className="border-transparent bg-blue-primary text-white shadow-sm hover:bg-blue-dark hover:text-white"
-            >
-              <Download className="size-4" />
-              تحميل Excel
-            </Button>
+          {employeeReport && canExport && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!!exportingFormat}
+                    className="border-transparent bg-blue-primary text-white shadow-sm hover:bg-blue-dark hover:text-white"
+                  />
+                }
+              >
+                {exportingFormat ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Download className="size-4" />
+                )}
+                تحميل التقرير
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onExport("excel")}>
+                  <FileSpreadsheet className="size-4" />
+                  تحميل Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onExport("pdf")}>
+                  <FileText className="size-4" />
+                  تحميل PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <Button
             variant="ghost"
@@ -125,6 +163,7 @@ function EmployeeReportDetail({
                 <TableHead className="bg-bg-elevated text-center">الحالة</TableHead>
                 <TableHead className="bg-bg-elevated text-center">الحضور</TableHead>
                 <TableHead className="bg-bg-elevated text-center">الانصراف</TableHead>
+                <TableHead className="bg-bg-elevated text-center">التأخير</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -158,6 +197,11 @@ function EmployeeReportDetail({
                   <TableCell className="text-center">
                     <TimeCell value={day.checkOut} />
                   </TableCell>
+                  <TableCell className="text-center text-amber-200">
+                    {day.lateMinutes && day.lateMinutes > 0
+                      ? formatLateDuration(day.lateMinutes)
+                      : "—"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -174,15 +218,18 @@ interface ReportsManagerProps {
 }
 
 export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
+  const canExport = usePermission("reports:export");
   const [data, setData] = useState(initialData);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedShiftId, setSelectedShiftId] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [exportingAll, setExportingAll] = useState(false);
+  const [exportingAll, setExportingAll] = useState<ReportFileFormat | null>(null);
   const [exportingEmployeeId, setExportingEmployeeId] = useState<string | null>(
     null
   );
+  const [exportingEmployeeFormat, setExportingEmployeeFormat] =
+    useState<ReportFileFormat | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(
     null
   );
@@ -252,38 +299,90 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
     }
   }
 
-  async function downloadEmployeeReport(employeeId: string) {
-    setExportingEmployeeId(employeeId);
-    try {
-      if (selectedEmployeeId === employeeId && employeeReport) {
-        await exportEmployeeReportExcel(employeeReport);
-        toast.success(`تم تحميل تقرير ${employeeReport.employee.name}`);
-        return;
-      }
+  async function exportEmployeeReport(
+    employeeId: string,
+    format: ReportFileFormat,
+    report?: EmployeeReportData | null
+  ) {
+    const exportFn =
+      format === "excel" ? exportEmployeeReportExcel : exportEmployeeReportPdf;
 
-      const result = await fetchEmployeeReport(employeeId, data.from, data.to);
-      await exportEmployeeReportExcel(result);
-      toast.success(`تم تحميل تقرير ${result.employee.name}`);
+    if (report) {
+      await exportFn(report);
+      return;
+    }
+
+    const result = await fetchEmployeeReport(employeeId, data.from, data.to);
+    await exportFn(result);
+  }
+
+  async function downloadEmployeeReport(
+    employeeId: string,
+    format: ReportFileFormat
+  ) {
+    setExportingEmployeeId(employeeId);
+    setExportingEmployeeFormat(format);
+    try {
+      const report =
+        selectedEmployeeId === employeeId ? employeeReport : null;
+      await exportEmployeeReport(employeeId, format, report);
+      const name =
+        report?.employee.name ??
+        data.employees.find((emp) => emp.employeeId === employeeId)
+          ?.employeeName ??
+        "الموظف";
+      toast.success(
+        `تم تحميل تقرير ${name} (${format === "excel" ? "Excel" : "PDF"})`
+      );
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "فشل تحميل التقرير"
       );
     } finally {
       setExportingEmployeeId(null);
+      setExportingEmployeeFormat(null);
     }
   }
 
-  async function exportAll() {
-    setExportingAll(true);
+  async function exportEmployeeDetail(format: ReportFileFormat) {
+    if (!employeeReport) return;
+
+    setExportingEmployeeFormat(format);
     try {
-      await exportWeeklyReportExcel(data);
-      toast.success("تم تحميل التقرير الأسبوعي");
+      await exportEmployeeReport(
+        employeeReport.employee.id,
+        format,
+        employeeReport
+      );
+      toast.success(
+        `تم تحميل تقرير ${employeeReport.employee.name} (${format === "excel" ? "Excel" : "PDF"})`
+      );
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "فشل تحميل التقرير"
       );
     } finally {
-      setExportingAll(false);
+      setExportingEmployeeFormat(null);
+    }
+  }
+
+  async function exportAll(format: ReportFileFormat) {
+    setExportingAll(format);
+    try {
+      if (format === "excel") {
+        await exportWeeklyReportExcel(data);
+      } else {
+        await exportWeeklyReportPdf(data);
+      }
+      toast.success(
+        `تم تحميل التقرير الأسبوعي (${format === "excel" ? "Excel" : "PDF"})`
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "فشل تحميل التقرير"
+      );
+    } finally {
+      setExportingAll(null);
     }
   }
 
@@ -377,19 +476,36 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
               </Button>
             </div>
 
-            <Button
-              onClick={exportAll}
-              size="sm"
-              disabled={exportingAll || data.employees.length === 0}
-              className="border-transparent bg-blue-primary text-white shadow-sm hover:bg-blue-dark hover:text-white disabled:opacity-50"
-            >
-              {exportingAll ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <FileSpreadsheet className="size-4" />
-              )}
-              تحميل تقرير الأسبوع
-            </Button>
+            {canExport && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      size="sm"
+                      disabled={!!exportingAll || data.employees.length === 0}
+                      className="border-transparent bg-blue-primary text-white shadow-sm hover:bg-blue-dark hover:text-white disabled:opacity-50"
+                    />
+                  }
+                >
+                  {exportingAll ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Download className="size-4" />
+                  )}
+                  تحميل تقرير الأسبوع
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => void exportAll("excel")}>
+                    <FileSpreadsheet className="size-4" />
+                    تحميل Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void exportAll("pdf")}>
+                    <FileText className="size-4" />
+                    تحميل PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             </div>
           </div>
 
@@ -423,14 +539,16 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
                 <TableHead className="text-center">حاضر</TableHead>
                 <TableHead className="text-center">متأخر</TableHead>
                 <TableHead className="text-center">غائب</TableHead>
-                <TableHead className="w-12 text-center">تحميل</TableHead>
+                {canExport && (
+                  <TableHead className="w-12 text-center">تحميل</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredEmployees.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={canExport ? 6 : 5}
                     className="py-10 text-center text-text-muted"
                   >
                     {data.employees.length === 0
@@ -473,27 +591,58 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
                         <TableCell className="text-center text-rose-200">
                           {emp.absent}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            disabled={isExporting}
-                            onClick={() => downloadEmployeeReport(emp.employeeId)}
-                            aria-label={`تحميل تقرير ${emp.employeeName}`}
-                          >
-                            {isExporting ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <Download className="size-4" />
-                            )}
-                          </Button>
-                        </TableCell>
+                        {canExport && (
+                          <TableCell className="text-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-8"
+                                    disabled={isExporting}
+                                    aria-label={`تحميل تقرير ${emp.employeeName}`}
+                                  />
+                                }
+                              >
+                                {isExporting ? (
+                                  <Loader2 className="size-4 animate-spin" />
+                                ) : (
+                                  <Download className="size-4" />
+                                )}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    void downloadEmployeeReport(
+                                      emp.employeeId,
+                                      "excel"
+                                    )
+                                  }
+                                >
+                                  <FileSpreadsheet className="size-4" />
+                                  Excel
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    void downloadEmployeeReport(
+                                      emp.employeeId,
+                                      "pdf"
+                                    )
+                                  }
+                                >
+                                  <FileText className="size-4" />
+                                  PDF
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
                       </TableRow>
 
                       {showReport && (
                         <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={6} className="p-3">
+                          <TableCell colSpan={canExport ? 6 : 5} className="p-3">
                             <EmployeeReportDetail
                               employeeReport={
                                 isSelected ? employeeReport : null
@@ -501,6 +650,11 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
                               loading={loadingEmployee && isSelected}
                               weekFrom={data.from}
                               weekTo={data.to}
+                              exportingFormat={exportingEmployeeFormat}
+                              canExport={canExport}
+                              onExport={(format) =>
+                                void exportEmployeeDetail(format)
+                              }
                               onClose={() => {
                                 setSelectedEmployeeId(null);
                                 setEmployeeReport(null);

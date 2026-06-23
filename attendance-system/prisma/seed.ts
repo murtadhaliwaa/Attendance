@@ -196,23 +196,16 @@ async function main() {
   const systemUsers = await Promise.all([
     prisma.systemUser.create({
       data: {
-        email: "ahmed@company.com",
-        name: "أحمد العتيبي",
-        role: Role.IT_ADMIN,
-      },
-    }),
-    prisma.systemUser.create({
-      data: {
         email: "hr@company.com",
         name: "سارة القحطاني",
-        role: Role.HR_MANAGER,
+        role: Role.MANAGER,
       },
     }),
     prisma.systemUser.create({
       data: {
-        email: "mohammed@company.com",
-        name: "محمد الشمري",
-        role: Role.GENERAL_MANAGER,
+        email: "inquiry@company.com",
+        name: "فهد العنزي",
+        role: Role.INQUIRY_CLERK,
       },
     }),
   ]);

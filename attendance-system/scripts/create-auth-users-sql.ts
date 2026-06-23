@@ -11,8 +11,7 @@ const defaultPassword =
   process.env.AUTH_SETUP_PASSWORD ?? "Admin@123456";
 
 const USERS = [
-  { email: "ahmed@company.com", name: "أحمد العتيبي" },
-  { email: "mohammed@company.com", name: "محمد الشمري" },
+  { email: "inquiry@company.com", name: "فهد العنزي" },
 ];
 
 async function main() {

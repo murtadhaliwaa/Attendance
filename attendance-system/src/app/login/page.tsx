@@ -37,13 +37,27 @@ export default function LoginPage() {
           <CardContent className="space-y-4">
             <LoginForm />
             {!isProduction && (
-              <p className="rounded-lg border border-bg-border bg-bg-elevated p-3 text-xs text-text-secondary">
-                حساب تجريبي:{" "}
-                <span dir="ltr" className="text-text-primary">
-                  hr@company.com
-                </span>{" "}
-                / Admin@123456
-              </p>
+              <div className="space-y-2 rounded-lg border border-bg-border bg-bg-elevated p-3 text-xs text-text-secondary">
+                <p className="font-medium text-text-primary">حسابات تجريبية:</p>
+                <p>
+                  مدير (كامل الصلاحيات):{" "}
+                  <span dir="ltr" className="text-text-primary">
+                    hr@company.com
+                  </span>
+                </p>
+                <p>
+                  موظف استعلامات (عرض كل الصفحات — إضافة موظف فقط):{" "}
+                  <span dir="ltr" className="text-text-primary">
+                    inquiry@company.com
+                  </span>
+                </p>
+                <p>
+                  كلمة المرور:{" "}
+                  <span dir="ltr" className="text-text-primary">
+                    Admin@123456
+                  </span>
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>

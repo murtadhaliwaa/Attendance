@@ -6,11 +6,7 @@ const projectRoot = path.resolve(__dirname, "..");
 config({ path: path.join(projectRoot, ".env.local") });
 config({ path: path.join(projectRoot, ".env") });
 
-const emails = [
-  "hr@company.com",
-  "ahmed@company.com",
-  "mohammed@company.com",
-];
+const emails = ["hr@company.com", "inquiry@company.com"];
 
 async function main() {
   const pool = new Pool({

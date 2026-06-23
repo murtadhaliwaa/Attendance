@@ -6,11 +6,13 @@ import {
 } from "@/lib/employee-serialize";
 import { getEmployeeDepartmentLists } from "@/lib/departments";
 import { getShiftOptions } from "@/lib/shifts";
+import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import type { ShiftOption } from "@/lib/employee-types";
 import { POSITIONS } from "@/lib/employee-types";
 
 export default async function EmployeesPage() {
+  await requirePagePermission("employees:read");
   const [
     employees,
     shifts,

@@ -49,6 +49,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { parseJsonResponse } from "@/lib/api-utils";
+import { usePermission } from "@/components/dashboard/role-context";
 import { cn } from "@/lib/utils";
 import { formatTimeLabel } from "@/lib/schedule-utils";
 import type { EmployeeRow, ShiftOption } from "@/lib/employee-types";
@@ -83,6 +84,10 @@ export function EmployeesManager({
   suggestedEmergencyCode,
 }: EmployeesManagerProps) {
   const router = useRouter();
+  const canCreate = usePermission("employees:create");
+  const canUpdate = usePermission("employees:update");
+  const canDelete = usePermission("employees:delete");
+  const showActions = canUpdate || canDelete;
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("active");
@@ -235,13 +240,15 @@ export function EmployeesManager({
         <p className="text-sm text-text-muted">
           {stats.active} نشط · {stats.withFace} مسجّل الوجه
         </p>
-        <Button
-          onClick={openCreate}
-          className="w-full shrink-0 border-transparent bg-blue-primary text-white shadow-sm hover:bg-blue-dark sm:w-auto"
-        >
-          <UserPlus className="size-4" />
-          إضافة موظف
-        </Button>
+        {canCreate && (
+          <Button
+            onClick={openCreate}
+            className="w-full shrink-0 border-transparent bg-blue-primary text-white shadow-sm hover:bg-blue-dark sm:w-auto"
+          >
+            <UserPlus className="size-4" />
+            إضافة موظف
+          </Button>
+        )}
       </div>
 
       <Card className="border border-bg-border bg-bg-card">
@@ -311,14 +318,16 @@ export function EmployeesManager({
                 <TableHead className="text-center">الشفت</TableHead>
                 <TableHead className="text-center">الوجه</TableHead>
                 <TableHead className="text-center">الحالة</TableHead>
-                <TableHead className="w-12 text-center">إجراءات</TableHead>
+                {showActions && (
+                  <TableHead className="w-12 text-center">إجراءات</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={showActions ? 8 : 7}
                     className="py-12 text-center text-text-secondary"
                   >
                     <UserMinus className="mx-auto mb-2 size-8 opacity-50" />
@@ -362,55 +371,69 @@ export function EmployeesManager({
                     <TableCell className="text-center text-sm text-text-muted">
                       {employee.isActive ? "نشط" : "موقوف"}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              disabled={actionLoading?.includes(employee.id) ?? false}
-                            />
-                          }
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEdit(employee)}>
-                            <Pencil />
-                            تعديل البيانات
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toggleActive(employee)}>
-                            {employee.isActive ? <UserX /> : <UserCheck />}
-                            {employee.isActive ? "إيقاف مؤقت" : "تفعيل"}
-                          </DropdownMenuItem>
-                          {employee.hasFace && (
-                            <DropdownMenuItem
-                              onClick={() => setClearFaceTarget(employee)}
-                            >
-                              <RotateCcw />
-                              مسح بصمة الوجه
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          {employee.isActive && (
-                            <DropdownMenuItem
-                              onClick={() => setDeactivateTarget(employee)}
-                            >
-                              <UserX />
-                              إيقاف الموظف
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => setDeleteTarget(employee)}
+                    {showActions && (
+                      <TableCell className="text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                disabled={
+                                  actionLoading?.includes(employee.id) ?? false
+                                }
+                              />
+                            }
                           >
-                            <Trash2 />
-                            حذف الموظف
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                            <MoreHorizontal className="size-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {canUpdate && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => openEdit(employee)}
+                                >
+                                  <Pencil />
+                                  تعديل البيانات
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => toggleActive(employee)}
+                                >
+                                  {employee.isActive ? <UserX /> : <UserCheck />}
+                                  {employee.isActive ? "إيقاف مؤقت" : "تفعيل"}
+                                </DropdownMenuItem>
+                                {employee.hasFace && (
+                                  <DropdownMenuItem
+                                    onClick={() => setClearFaceTarget(employee)}
+                                  >
+                                    <RotateCcw />
+                                    مسح بصمة الوجه
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                {employee.isActive && (
+                                  <DropdownMenuItem
+                                    onClick={() => setDeactivateTarget(employee)}
+                                  >
+                                    <UserX />
+                                    إيقاف الموظف
+                                  </DropdownMenuItem>
+                                )}
+                              </>
+                            )}
+                            {canDelete && (
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => setDeleteTarget(employee)}
+                              >
+                                <Trash2 />
+                                حذف الموظف
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}

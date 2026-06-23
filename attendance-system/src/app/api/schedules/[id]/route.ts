@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
 import { invalidateShiftTimingsCache } from "@/lib/attendance-reconcile";
 import { prisma } from "@/lib/prisma";
 import {
@@ -11,7 +11,7 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await requireAuth();
+  const auth = await requirePermission("settings:write");
   if (auth.error) return auth.error;
 
   try {

@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { parseJsonResponse } from "@/lib/api-utils";
+import { usePermission } from "@/components/dashboard/role-context";
 import {
   formatTimeLabel,
   getEarlyLeaveDeadlineLabel,
@@ -57,6 +58,7 @@ interface ShiftsSettingsProps {
 
 export function ShiftsSettings({ initialShifts }: ShiftsSettingsProps) {
   const router = useRouter();
+  const canWrite = usePermission("settings:write");
   const [shifts, setShifts] = useState(initialShifts);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -146,7 +148,7 @@ export function ShiftsSettings({ initialShifts }: ShiftsSettingsProps) {
               للموظف.
             </p>
           </div>
-          {shifts.length < DEFAULT_SHIFT_COUNT && (
+          {canWrite && shifts.length < DEFAULT_SHIFT_COUNT && (
             <Button
               size="sm"
               onClick={openCreate}
@@ -173,7 +175,9 @@ export function ShiftsSettings({ initialShifts }: ShiftsSettingsProps) {
                   <TableHead className="text-center">وقت الانصراف</TableHead>
                   <TableHead className="text-center">سماح الخروج المبكر</TableHead>
                   <TableHead className="text-center">الموظفون</TableHead>
-                  <TableHead className="text-center">إجراء</TableHead>
+                  {canWrite && (
+                    <TableHead className="text-center">إجراء</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -215,16 +219,18 @@ export function ShiftsSettings({ initialShifts }: ShiftsSettingsProps) {
                     <TableCell className="text-center text-text-muted">
                       {shift.employeeCount}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEdit(shift)}
-                      >
-                        <Pencil className="size-4" />
-                        تعديل
-                      </Button>
-                    </TableCell>
+                    {canWrite && (
+                      <TableCell className="text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEdit(shift)}
+                        >
+                          <Pencil className="size-4" />
+                          تعديل
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

@@ -19,6 +19,13 @@ export type WeeklyEmployeeSummary = {
   earlyLeave: number;
   absent: number;
   workingDays: number;
+  lateDetails: string;
+  lateDays: {
+    date: string;
+    dayName: string;
+    lateMinutes: number;
+  }[];
+  totalLateMinutes: number;
 };
 
 export type WeeklyReportData = {
@@ -40,6 +47,7 @@ export type EmployeeDayRecord = {
   checkIn: string | null;
   checkOut: string | null;
   isWorkingDay: boolean;
+  lateMinutes: number | null;
 };
 
 export type EmployeeReportSummary = {

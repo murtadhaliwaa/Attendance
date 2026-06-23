@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import type { Role, SystemUser } from "@prisma/client";
 import type { User } from "@supabase/supabase-js";
+import {
+  hasAnyPermission,
+  hasPermission,
+  type Permission,
+} from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,6 +39,42 @@ export async function requireAuth(): Promise<AuthResult> {
   }
 
   return { user, systemUser };
+}
+
+export async function requirePermission(
+  permission: Permission
+): Promise<AuthResult> {
+  const auth = await requireAuth();
+  if (auth.error) return auth;
+
+  if (!hasPermission(auth.systemUser.role, permission)) {
+    return {
+      error: NextResponse.json(
+        { error: "صلاحيات غير كافية" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return auth;
+}
+
+export async function requireAnyPermission(
+  permissions: Permission[]
+): Promise<AuthResult> {
+  const auth = await requireAuth();
+  if (auth.error) return auth;
+
+  if (!hasAnyPermission(auth.systemUser.role, permissions)) {
+    return {
+      error: NextResponse.json(
+        { error: "صلاحيات غير كافية" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return auth;
 }
 
 export async function requireRole(allowed: Role[]): Promise<AuthResult> {

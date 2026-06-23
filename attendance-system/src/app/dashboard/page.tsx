@@ -12,6 +12,8 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
+import { getSessionSystemUser } from "@/lib/page-auth";
+import { hasPermission } from "@/lib/permissions";
 import {
   AlertTypeLabel,
   StatusLabel,
@@ -28,6 +30,10 @@ import { getShiftTimingsBundle } from "@/lib/attendance-reconcile";
 import { getTodayDate } from "@/lib/app-timezone";
 
 export default async function DashboardPage() {
+  const systemUser = await getSessionSystemUser();
+  const canViewReports =
+    !!systemUser && hasPermission(systemUser.role, "reports:read");
+
   const today = getTodayDate();
 
   const [
@@ -169,15 +175,17 @@ export default async function DashboardPage() {
           <CardTitle className="text-sm font-medium text-text-primary">
             آخر تسجيلات اليوم
           </CardTitle>
-          <Link
-            href="/dashboard/reports"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "shrink-0"
-            )}
-          >
-            التقارير
-          </Link>
+          {canViewReports && (
+            <Link
+              href="/dashboard/reports"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "shrink-0"
+              )}
+            >
+              التقارير
+            </Link>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           {attendanceRows.length === 0 ? (

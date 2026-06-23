@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
 import { getWeeklyReport } from "@/lib/reports";
 
 export async function GET(request: Request) {
-  const auth = await requireAuth();
+  const auth = await requirePermission("reports:read");
   if (auth.error) return auth.error;
 
   try {

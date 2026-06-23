@@ -11,6 +11,8 @@ import { DepartmentsSettings } from "@/components/dashboard/settings/departments
 import { ShiftsSettings } from "@/components/dashboard/settings/shifts-settings";
 import { getDepartmentRows } from "@/lib/departments";
 import { ensureDefaultShifts } from "@/lib/shifts";
+import { requirePagePermission } from "@/lib/page-auth";
+import { ROLE_LABELS } from "@/lib/permissions";
 import { prisma, withDbRetry } from "@/lib/prisma";
 import type { ShiftRow } from "@/lib/schedule-types";
 
@@ -33,13 +35,8 @@ async function loadSettingsData() {
   return { shifts, users, departments };
 }
 
-const roleLabels: Record<string, string> = {
-  IT_ADMIN: "مدير تقنية",
-  HR_MANAGER: "موارد بشرية",
-  GENERAL_MANAGER: "مدير عام",
-};
-
 export default async function SettingsPage() {
+  await requirePagePermission("settings:read");
   const { shifts, users, departments } = await withDbRetry(loadSettingsData);
 
   const shiftRows: ShiftRow[] = shifts.map((shift) => ({
@@ -84,7 +81,7 @@ export default async function SettingsPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-text-muted">
-                    {roleLabels[user.role] ?? user.role}
+                    {ROLE_LABELS[user.role] ?? user.role}
                   </TableCell>
                   <TableCell className="text-text-muted">
                     {user.isActive ? "نشط" : "موقوف"}

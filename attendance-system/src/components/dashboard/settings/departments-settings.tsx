@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { parseJsonResponse } from "@/lib/api-utils";
+import { usePermission } from "@/components/dashboard/role-context";
 import type { DepartmentRow } from "@/lib/department-types";
 
 interface DepartmentsSettingsProps {
@@ -35,6 +36,7 @@ export function DepartmentsSettings({
   initialDepartments,
 }: DepartmentsSettingsProps) {
   const router = useRouter();
+  const canWrite = usePermission("settings:write");
   const [departments, setDepartments] =
     useState<DepartmentRow[]>(initialDepartments);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -138,14 +140,16 @@ export function DepartmentsSettings({
               أضف أو عدّل أو احذف الأقسام المتاحة عند إضافة الموظفين
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={openCreate}
-            className="border-transparent bg-blue-primary text-white shadow-sm hover:bg-blue-dark hover:text-white"
-          >
-            <Plus className="size-4" />
-            قسم جديد
-          </Button>
+          {canWrite && (
+            <Button
+              size="sm"
+              onClick={openCreate}
+              className="border-transparent bg-blue-primary text-white shadow-sm hover:bg-blue-dark hover:text-white"
+            >
+              <Plus className="size-4" />
+              قسم جديد
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           {departments.length === 0 ? (
@@ -159,7 +163,9 @@ export function DepartmentsSettings({
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-center">القسم</TableHead>
                   <TableHead className="text-center">الموظفون</TableHead>
-                  <TableHead className="text-center">إجراء</TableHead>
+                  {canWrite && (
+                    <TableHead className="text-center">إجراء</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -171,40 +177,42 @@ export function DepartmentsSettings({
                     <TableCell className="text-center text-text-muted">
                       {department.employeeCount}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => openEdit(department)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => requestDelete(department)}
-                          title={
-                            department.employeeCount > 0
-                              ? `لا يمكن حذف قسم مرتبط بـ ${department.employeeCount} موظف`
-                              : "حذف القسم"
-                          }
-                          className={
-                            department.employeeCount > 0
-                              ? "opacity-50 hover:bg-transparent"
-                              : "hover:bg-rose-500/10"
-                          }
-                        >
-                          <Trash2
+                    {canWrite && (
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => openEdit(department)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => requestDelete(department)}
+                            title={
+                              department.employeeCount > 0
+                                ? `لا يمكن حذف قسم مرتبط بـ ${department.employeeCount} موظف`
+                                : "حذف القسم"
+                            }
                             className={
                               department.employeeCount > 0
-                                ? "size-4 text-text-muted"
-                                : "size-4 text-rose-300"
+                                ? "opacity-50 hover:bg-transparent"
+                                : "hover:bg-rose-500/10"
                             }
-                          />
-                        </Button>
-                      </div>
-                    </TableCell>
+                          >
+                            <Trash2
+                              className={
+                                department.employeeCount > 0
+                                  ? "size-4 text-text-muted"
+                                  : "size-4 text-rose-300"
+                              }
+                            />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

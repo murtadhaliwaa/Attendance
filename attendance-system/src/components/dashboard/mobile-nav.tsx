@@ -2,40 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Monitor,
-  Settings,
-  Users,
-  FileBarChart,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
-
-function isNavItemActive(
-  pathname: string,
-  href: string,
-  exact?: boolean
-) {
-  if (exact) return pathname === href;
-  if (href === "/kiosk") return pathname.startsWith("/kiosk");
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-const navItems = [
-  { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/employees", label: "الموظفون", icon: Users },
-  { href: "/dashboard/reports", label: "التقارير", icon: FileBarChart },
-  { href: "/kiosk", label: "الحضور و الانصراف", icon: Monitor },
-  { href: "/dashboard/settings", label: "الإعدادات", icon: Settings },
-];
+import { useUserRole } from "@/components/dashboard/role-context";
+import {
+  getDashboardNavItems,
+  isDashboardNavActive,
+} from "@/lib/dashboard-nav";
 
 export function MobileNav() {
   const pathname = usePathname();
+  const role = useUserRole();
+  const navItems = getDashboardNavItems(role);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-bg-border bg-bg-sidebar/95 px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
       {navItems.map((item) => {
-        const isActive = isNavItemActive(pathname, item.href, item.exact);
+        const isActive = isDashboardNavActive(pathname, item.href, item.exact);
 
         return (
           <Link

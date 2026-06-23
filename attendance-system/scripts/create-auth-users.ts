@@ -14,8 +14,7 @@ const defaultPassword =
 
 const users = [
   { email: "hr@company.com", name: "سارة القحطاني" },
-  { email: "ahmed@company.com", name: "أحمد العتيبي" },
-  { email: "mohammed@company.com", name: "محمد الشمري" },
+  { email: "inquiry@company.com", name: "فهد العنزي" },
 ];
 
 async function main() {
