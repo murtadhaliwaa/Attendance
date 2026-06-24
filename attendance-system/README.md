@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# نظام الحضور والانصراف
 
-## Getting Started
+نظام عربي (RTL) لتسجيل حضور وانصراف الموظفين بالتعرف على الوجه، مع لوحة تحكم وتقارير.
 
-First, run the development server:
+## التقنيات
+
+- **Next.js 14** · React 18 · TypeScript
+- **Supabase** — مصادقة + PostgreSQL
+- **Prisma 7** — ORM
+- **@vladmandic/human** — كشف وجه + بصمة **1024-d** (محرك واحد في المتصفح)
+- **Vercel** — نشر الإنتاج
+
+## البدء السريع
 
 ```bash
+# من جذر المستودع
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# أو من مجلد التطبيق
+cd attendance-system
+npm install
+cp .env.example .env.local   # ثم املأ القيم
+npm run models:download      # نماذج Human محلياً (~9 MB)
+npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+التطبيق: [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## أوامر مفيدة
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| الأمر | الوظيفة |
+|-------|---------|
+| `npm run build` | بناء إنتاج |
+| `npm run models:download` | نسخ نماذج Human إلى `public/models/human/` |
+| `npm run test:face-v2` | اختبار بصمة 1024-d + API الكiosk |
+| `npm run db:seed` | بيانات تجريبية |
+| `npm run db:clear` | مسح كل البيانات |
+| `npm run auth:setup-production` | حسابات الإدارة |
+| `npm run db:backfill-departments` | ربط `departmentId` بعد migration |
+| `npm run db:backfill-face-versions` | تعيين إصدار البصمة (v1/v2) |
+| `npm run env:validate` | التحقق من `.env` |
 
-## Learn More
+## التعرف على الوجه (Human 1024-d)
 
-To learn more about Next.js, take a look at the following resources:
+| البند | التفاصيل |
+|-------|----------|
+| المحرك | `@vladmandic/human` — `src/lib/face-engine/human-engine.ts` |
+| البصمة | 1024 عنصر (`faceDescriptorVersion = 2`) |
+| النماذج | `blazeface` · `facemesh` · `faceres` في `public/models/human/` |
+| التحميل | محلي من `/models/human/` — **لا يحتاج إنترنت على التابلت بعد `models:download`** |
+| البصمات القديمة | 128-d (v1) — يجب إعادة تسجيل الوجه من لوحة التحكم أو الكiosk |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## المتغيرات البيئية
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+انظر `.env.example`:
 
-## Deploy on Vercel
+- `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `DATABASE_URL` (pooler) · `DIRECT_URL` (migrations)
+- `KIOSK_API_KEY` — حماية API الكشك (يُستخدم في الخادم فقط؛ المتصفح يحصل على جلسة HttpOnly عبر `/kiosk`)
+- `UPSTASH_REDIS_REST_URL` · `UPSTASH_REDIS_REST_TOKEN` — اختياري؛ rate limit موزع في الإنتاج
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## الأدوار
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| الحساب | الدور |
+|--------|-------|
+| `hr@company.com` | مدير — صلاحيات كاملة |
+| `inquiry@company.com` | استعلامات — عرض + إضافة موظف |
+
+إعداد: `npm run auth:setup-production`
+
+## المسارات الرئيسية
+
+| المسار | الوصف |
+|--------|--------|
+| `/login` | تسجيل الدخول |
+| `/dashboard` | لوحة التحكم |
+| `/kiosk/setup` | إعداد التابلت (شاشة كاملة) |
+| `/kiosk/checkin` | حضور بالوجه |
+| `/kiosk/checkout` | انصراف بالوجه |
+
+## التوثيق التقني
+
+مرجع شامل للمطورين: [`../تقارير/`](../تقارير/)
+
+- [مرجع النظام](../تقارير/00-مرجع-النظام-الشامل.md)
+- [التعرف على الوجه](../تقارير/الخصائص/تطويرات/02-التعرف-على-الوجه.md)
+- [دليل إضافة ميزة](../تقارير/الخصائص/الهيكلية-الصحيحة/دليل-إضافة-ميزة-جديدة.md)
+
+## هيكل المشروع
+
+```
+attendance-system/
+├── src/app/              # صفحات + API
+├── src/lib/face-engine/  # Human 1024-d
+├── prisma/               # مخطط قاعدة البيانات
+├── public/models/human/  # نماذج Human (بعد models:download)
+└── scripts/              # صيانة وإعداد
+```

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Fingerprint, LogIn, LogOut } from "lucide-react";
+import { Fingerprint, LogIn, LogOut, MonitorSmartphone } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -64,6 +64,25 @@ export default function KioskHubPage() {
           </Card>
         </Link>
       </div>
+
+      <Link
+        href="/kiosk/setup"
+        className="mt-6 block w-full max-w-2xl"
+      >
+        <Card className="border-blue-primary/30 bg-bg-card transition-colors hover:border-blue-primary/50 hover:bg-blue-primary/5">
+          <CardHeader className="flex flex-row items-center gap-4 pb-2">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-primary/15 text-blue-primary">
+              <MonitorSmartphone className="size-6" />
+            </div>
+            <div className="text-right">
+              <CardTitle className="text-lg">إعداد كشك التابلت</CardTitle>
+              <CardDescription>
+                Galaxy Tab A9 — ملء الشاشة وإبقاء الشاشة مضاءة
+              </CardDescription>
+            </div>
+          </CardHeader>
+        </Card>
+      </Link>
     </div>
   );
 }

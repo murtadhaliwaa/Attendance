@@ -5,7 +5,7 @@ import { getTodayDate } from "@/lib/app-timezone";
 import { formatTimeAr } from "@/lib/attendance-utils";
 
 export async function GET(request: Request) {
-  const kioskError = requireKioskAuth(request);
+  const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;
 
   const { searchParams } = new URL(request.url);

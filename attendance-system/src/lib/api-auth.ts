@@ -6,30 +6,22 @@ import {
   hasPermission,
   type Permission,
 } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { resolveAuthForApi } from "@/lib/session";
 
 export type AuthResult =
   | { error: NextResponse; user?: never; systemUser?: never }
   | { error?: never; user: User; systemUser: SystemUser };
 
 export async function requireAuth(): Promise<AuthResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const result = await resolveAuthForApi();
 
-  if (!user?.email) {
+  if (result.kind === "anonymous") {
     return {
       error: NextResponse.json({ error: "يجب تسجيل الدخول" }, { status: 401 }),
     };
   }
 
-  const systemUser = await prisma.systemUser.findUnique({
-    where: { email: user.email },
-  });
-
-  if (!systemUser?.isActive) {
+  if (result.kind === "forbidden") {
     return {
       error: NextResponse.json(
         { error: "ليس لديك صلاحية الوصول إلى النظام" },
@@ -38,7 +30,7 @@ export async function requireAuth(): Promise<AuthResult> {
     };
   }
 
-  return { user, systemUser };
+  return result.session;
 }
 
 export async function requirePermission(

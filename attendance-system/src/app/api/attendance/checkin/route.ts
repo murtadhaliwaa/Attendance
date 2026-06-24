@@ -6,14 +6,12 @@ import { getTodayDate } from "@/lib/app-timezone";
 import { formatTimeAr, getAttendanceStatus } from "@/lib/attendance-utils";
 import { resolveEmployeeShiftAsync } from "@/lib/attendance-shift";
 import { employeeShiftSelect } from "@/lib/employee-shift";
-import {
-  isValidFaceDescriptor,
-  verifyFaceDescriptor,
-} from "@/lib/face-verify-server";
+import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 import { hasRealFaceDescriptor } from "@/lib/face-descriptor-utils";
+import { verifyAttendanceFaceMatch } from "@/lib/face-match-employee";
 
 export async function POST(request: Request) {
-  const kioskError = requireKioskAuth(request);
+  const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;
 
   let body: { employeeId?: string; descriptor?: number[] };
@@ -48,14 +46,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "الموظف غير موجود" }, { status: 404 });
   }
 
-  if (!hasRealFaceDescriptor(employee.faceDescriptor)) {
+  if (
+    !hasRealFaceDescriptor(
+      employee.faceDescriptor,
+      employee.faceDescriptorVersion
+    )
+  ) {
     return NextResponse.json(
       { error: "لم يتم تسجيل وجه هذا الموظف بعد" },
       { status: 400 }
     );
   }
 
-  if (!verifyFaceDescriptor(employee.faceDescriptor, descriptor)) {
+  if (!(await verifyAttendanceFaceMatch(employeeId, descriptor))) {
     return NextResponse.json(
       { error: "فشل التحقق من الوجه" },
       { status: 403 }

@@ -366,7 +366,13 @@ export function EmployeesManager({
                       </div>
                     </TableCell>
                     <TableCell className="text-center text-sm text-text-muted">
-                      {employee.hasFace ? "مسجّل" : "—"}
+                      {employee.needsFaceReEnrollment ? (
+                        <span className="text-amber-600">يحتاج إعادة تسجيل</span>
+                      ) : employee.hasFace ? (
+                        "مسجّل"
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     <TableCell className="text-center text-sm text-text-muted">
                       {employee.isActive ? "نشط" : "موقوف"}

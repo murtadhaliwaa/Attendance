@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/api-auth";
 import { nextEmployeeCode, nextEmergencyCode } from "@/lib/employee-codes";
-import { ensureDepartmentExists } from "@/lib/departments";
+import { resolveEmployeeDepartment } from "@/lib/department-resolve";
 import {
   employeeListSelect,
   serializeEmployee,
@@ -13,6 +13,7 @@ import {
   validateEmployeeCode,
 } from "@/lib/employee-validation";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
+import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
 import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 import { prisma } from "@/lib/prisma";
 
@@ -163,7 +164,11 @@ export async function POST(request: Request) {
       );
     }
 
-    await ensureDepartmentExists(department);
+    const resolvedDepartment = await resolveEmployeeDepartment({
+      departmentId:
+        typeof body.departmentId === "string" ? body.departmentId : null,
+      departmentName: department,
+    });
 
     const faceDescriptor = body.faceDescriptor;
     const hasFace =
@@ -200,15 +205,17 @@ export async function POST(request: Request) {
       data: {
         employeeCode,
         name,
-        department,
+        department: resolvedDepartment.department,
+        departmentId: resolvedDepartment.departmentId,
         position,
         phone,
         emergencyCode,
         customEndTime,
         isActive,
         faceDescriptor: hasFace ? faceDescriptor : [],
+        faceDescriptorVersion: hasFace ? CURRENT_FACE_DESCRIPTOR_VERSION : 2,
         hasFaceRegistered: hasFace,
-        ...(shiftId ? { shift: { connect: { id: shiftId } } } : {}),
+        shiftId,
       },
       select: employeeListSelect,
     });

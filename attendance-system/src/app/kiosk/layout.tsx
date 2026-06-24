@@ -1,4 +1,5 @@
 import { KioskShell } from "@/components/kiosk/kiosk-nav";
+import { KioskTabletAutoActivate } from "@/components/kiosk/kiosk-tablet-auto";
 import { KioskWarmup } from "@/components/kiosk/kiosk-warmup";
 
 export default function KioskLayout({
@@ -9,6 +10,7 @@ export default function KioskLayout({
   return (
     <>
       <KioskWarmup />
+      <KioskTabletAutoActivate />
       <KioskShell>{children}</KioskShell>
     </>
   );

@@ -1,5 +1,5 @@
-import type * as faceapi from "face-api.js";
-import { getVideoDetectionCanvas } from "@/lib/camera-frame";
+import { getFaceEngine } from "@/lib/face-engine";
+import { getDescriptorSize } from "@/lib/face-descriptor-version";
 import {
   CONSECUTIVE_MATCHES_REQUIRED,
   DUPLICATE_FACE_MATCH_THRESHOLD,
@@ -8,15 +8,13 @@ import {
   ENROLLMENT_SAMPLES,
   FACE_MATCH_THRESHOLD,
   FACE_STRONG_MATCH_DISTANCE,
+  getFaceMatchThresholds,
   MAX_ENROLLMENT_VARIANCE,
   SCAN_DETECT_INPUT_SIZE,
   SCAN_MIN_CONFIDENCE,
   SCAN_MIN_FACE_SIZE_RATIO,
   selectBestFaceMatch,
 } from "@/lib/face-match-config";
-
-const MODEL_URL = "/models";
-
 export {
   CONSECUTIVE_MATCHES_REQUIRED,
   DUPLICATE_FACE_MATCH_THRESHOLD,
@@ -39,62 +37,6 @@ export const STRONG_MATCH_DISTANCE = FACE_STRONG_MATCH_DISTANCE;
 export const ENROLLMENT_SAMPLE_RETRIES = 25;
 export const ENROLLMENT_RETRY_DELAY_MS = 200;
 
-let scanModelsLoaded = false;
-let enrollmentModelsLoaded = false;
-let faceApiModule: typeof faceapi | null = null;
-
-async function importFaceApi() {
-  if (faceApiModule) return faceApiModule;
-  try {
-    faceApiModule = await import("face-api.js");
-    return faceApiModule;
-  } catch {
-    throw new Error("فشل تحميل مكتبة التعرف على الوجه");
-  }
-}
-
-export async function loadScanFaceModels(): Promise<void> {
-  if (scanModelsLoaded) return;
-
-  const faceapi = await importFaceApi();
-
-  try {
-    await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-    ]);
-  } catch {
-    throw new Error(
-      "فشل تحميل نماذج التعرف. تأكد من وجود ملفات /public/models ثم حدّث الصفحة"
-    );
-  }
-
-  scanModelsLoaded = true;
-}
-
-export async function loadEnrollmentFaceModels(): Promise<void> {
-  await loadScanFaceModels();
-  if (enrollmentModelsLoaded) return;
-
-  const faceapi = await importFaceApi();
-
-  try {
-    await Promise.all([
-      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-    ]);
-  } catch {
-    throw new Error("فشل تحميل نماذج تسجيل الوجه");
-  }
-
-  enrollmentModelsLoaded = true;
-}
-
-export async function loadFaceModels(): Promise<void> {
-  await loadEnrollmentFaceModels();
-}
-
 export interface EmployeeFaceData {
   id: string;
   name: string;
@@ -114,59 +56,22 @@ export interface FaceDetectionResult {
   faceSizeRatio: number;
 }
 
-function getFaceSizeRatio(
-  box: { width: number; height: number },
-  frameWidth: number,
-  frameHeight: number
-): number {
-  const frameArea = frameWidth * frameHeight;
-  if (frameArea === 0) return 0;
-  return (box.width * box.height) / frameArea;
+export async function loadScanFaceModels(): Promise<void> {
+  await getFaceEngine().loadScanModels();
 }
 
-function getDetectionSource(
-  video: HTMLVideoElement
-): HTMLCanvasElement | HTMLVideoElement | null {
-  return getVideoDetectionCanvas(video) ?? video;
+export async function loadEnrollmentFaceModels(): Promise<void> {
+  await getFaceEngine().loadEnrollmentModels();
+}
+
+export async function loadFaceModels(): Promise<void> {
+  await loadEnrollmentFaceModels();
 }
 
 export async function detectFaceForScan(
   video: HTMLVideoElement
 ): Promise<FaceDetectionResult | null> {
-  if (!faceApiModule) await loadScanFaceModels();
-
-  const source = getDetectionSource(video);
-  if (!source) return null;
-
-  const frameWidth =
-    source instanceof HTMLCanvasElement ? source.width : source.videoWidth;
-  const frameHeight =
-    source instanceof HTMLCanvasElement ? source.height : source.videoHeight;
-
-  const detection = await faceApiModule!.detectSingleFace(
-    source,
-    new faceApiModule!.TinyFaceDetectorOptions({
-      inputSize: SCAN_DETECT_INPUT_SIZE,
-      scoreThreshold: SCAN_MIN_CONFIDENCE,
-    })
-  )
-    .withFaceLandmarks(true)
-    .withFaceDescriptor();
-
-  if (!detection?.descriptor) return null;
-
-  const faceSizeRatio = getFaceSizeRatio(
-    detection.detection.box,
-    frameWidth,
-    frameHeight
-  );
-  if (faceSizeRatio < SCAN_MIN_FACE_SIZE_RATIO) return null;
-
-  return {
-    descriptor: detection.descriptor,
-    score: detection.detection.score,
-    faceSizeRatio,
-  };
+  return getFaceEngine().detectForScan(video);
 }
 
 export async function detectFaceDescriptor(
@@ -180,65 +85,74 @@ function scoreEmployeeMatches(
   descriptor: Float32Array,
   employees: EmployeeFaceData[]
 ): Array<FaceMatchResult & { distance: number }> {
-  if (!faceApiModule) return [];
-
+  const engine = getFaceEngine();
+  const version = engine.descriptorVersion;
+  const expectedSize = getDescriptorSize(version);
+  const thresholds = getFaceMatchThresholds(version);
   const scored: Array<FaceMatchResult & { distance: number }> = [];
 
   for (const employee of employees) {
-    if (employee.descriptor.length !== 128) continue;
+    if (employee.descriptor.length !== expectedSize) continue;
 
     const stored = new Float32Array(employee.descriptor);
-    const distance = faceApiModule.euclideanDistance(descriptor, stored);
+    const distance = engine.euclideanDistance(descriptor, stored);
 
     scored.push({
       employee,
       distance,
-      confidence: Math.max(0, 1 - distance / FACE_MATCH_THRESHOLD),
+      confidence: Math.max(0, 1 - distance / thresholds.match),
     });
   }
 
   return scored;
 }
-
 export function findBestMatch(
   descriptor: Float32Array,
   employees: EmployeeFaceData[]
 ): FaceMatchResult | null {
   if (employees.length === 0) return null;
 
-  const best = selectBestFaceMatch(scoreEmployeeMatches(descriptor, employees), "recognize");
-  if (!best) return null;
-
-  return {
-    employee: best.employee,
-    distance: best.distance,
-    confidence: Math.max(0, 1 - best.distance / FACE_MATCH_THRESHOLD),
-  };
-}
-
-/** تحقق صارم من التسجيل المكرر — للاستخدام عند إضافة موظف جديد فقط */
-export function findStrictDuplicateMatch(
-  descriptor: Float32Array,
-  employees: EmployeeFaceData[]
-): FaceMatchResult | null {
-  if (employees.length === 0) return null;
+  const engine = getFaceEngine();
+  const thresholds = getFaceMatchThresholds(engine.descriptorVersion);
 
   const best = selectBestFaceMatch(
     scoreEmployeeMatches(descriptor, employees),
-    "duplicate"
+    "recognize",
+    engine.descriptorVersion
   );
   if (!best) return null;
 
   return {
     employee: best.employee,
     distance: best.distance,
-    confidence: Math.max(0, 1 - best.distance / DUPLICATE_FACE_MATCH_THRESHOLD),
+    confidence: Math.max(0, 1 - best.distance / thresholds.match),
   };
 }
+export function findStrictDuplicateMatch(
+  descriptor: Float32Array,
+  employees: EmployeeFaceData[]
+): FaceMatchResult | null {
+  if (employees.length === 0) return null;
 
+  const engine = getFaceEngine();
+  const thresholds = getFaceMatchThresholds(engine.descriptorVersion);
+
+  const best = selectBestFaceMatch(
+    scoreEmployeeMatches(descriptor, employees),
+    "duplicate",
+    engine.descriptorVersion
+  );
+  if (!best) return null;
+
+  return {
+    employee: best.employee,
+    distance: best.distance,
+    confidence: Math.max(0, 1 - best.distance / thresholds.duplicate),
+  };
+}
 export function averageDescriptors(descriptors: Float32Array[]): Float32Array {
-  const length = descriptors[0]?.length ?? 128;
-  const avg = new Float32Array(length);
+  const length =
+    descriptors[0]?.length ?? getDescriptorSize(getFaceEngine().descriptorVersion);  const avg = new Float32Array(length);
 
   for (const desc of descriptors) {
     for (let i = 0; i < length; i++) {
@@ -254,13 +168,14 @@ export function averageDescriptors(descriptors: Float32Array[]): Float32Array {
 }
 
 export function computeDescriptorVariance(descriptors: Float32Array[]): number {
-  if (!faceApiModule || descriptors.length < 2) return 0;
+  if (descriptors.length < 2) return 0;
 
+  const engine = getFaceEngine();
   const avg = averageDescriptors(descriptors);
   let total = 0;
 
   for (const desc of descriptors) {
-    total += faceApiModule.euclideanDistance(desc, avg);
+    total += engine.euclideanDistance(desc, avg);
   }
 
   return total / descriptors.length;
@@ -279,49 +194,13 @@ async function waitForVideoReady(
   }
 }
 
-async function detectFaceForEnrollment(
-  video: HTMLVideoElement
-): Promise<FaceDetectionResult | null> {
-  if (!faceApiModule) await loadEnrollmentFaceModels();
-
-  const source = getDetectionSource(video);
-  if (!source) return null;
-
-  const frameWidth =
-    source instanceof HTMLCanvasElement ? source.width : source.videoWidth;
-  const frameHeight =
-    source instanceof HTMLCanvasElement ? source.height : source.videoHeight;
-
-  const detection = await faceApiModule!.detectSingleFace(
-    source,
-    new faceApiModule!.SsdMobilenetv1Options({
-      minConfidence: ENROLLMENT_MIN_CONFIDENCE,
-    })
-  )
-    .withFaceLandmarks()
-    .withFaceDescriptor();
-
-  if (!detection?.descriptor) return null;
-
-  const faceSizeRatio = getFaceSizeRatio(
-    detection.detection.box,
-    frameWidth,
-    frameHeight
-  );
-  if (faceSizeRatio < ENROLLMENT_MIN_FACE_SIZE_RATIO) return null;
-
-  return {
-    descriptor: detection.descriptor,
-    score: detection.detection.score,
-    faceSizeRatio,
-  };
-}
-
 async function captureEnrollmentSample(
   video: HTMLVideoElement
 ): Promise<FaceDetectionResult> {
+  const engine = getFaceEngine();
+
   for (let attempt = 0; attempt < ENROLLMENT_SAMPLE_RETRIES; attempt++) {
-    const result = await detectFaceForEnrollment(video);
+    const result = await engine.detectForEnrollment(video);
     if (result) return result;
     await new Promise((r) => setTimeout(r, ENROLLMENT_RETRY_DELAY_MS));
   }

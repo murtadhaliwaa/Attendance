@@ -14,11 +14,11 @@ import type { KioskMode } from "@/lib/kiosk-types";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
-  const kioskError = requireKioskAuth(request);
+  const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;
 
   const clientIp = getClientIp(request);
-  if (!checkRateLimit(`emergency:${clientIp}`, 5, 60_000)) {
+  if (!(await checkRateLimit(`emergency:${clientIp}`, 5, 60_000))) {
     return NextResponse.json(
       { error: "محاولات كثيرة — انتظر دقيقة ثم حاول مجدداً" },
       { status: 429 }

@@ -7,6 +7,7 @@ const appDir = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
+    serverComponentsExternalPackages: ["@vladmandic/human"],
   },
   compiler: {
     removeConsole:

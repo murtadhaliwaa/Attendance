@@ -1,34 +1,25 @@
 import { redirect } from "next/navigation";
 import type { SystemUser } from "@prisma/client";
 import { hasPermission, type Permission } from "@/lib/permissions";
-import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
+import { resolveSessionAuth } from "@/lib/session";
 
 export async function getSessionSystemUser(): Promise<SystemUser | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user?.email) return null;
-
-  return prisma.systemUser.findUnique({
-    where: { email: user.email },
-  });
+  const session = await resolveSessionAuth();
+  return session?.systemUser ?? null;
 }
 
 export async function requirePagePermission(
   permission: Permission
 ): Promise<SystemUser> {
-  const systemUser = await getSessionSystemUser();
+  const session = await resolveSessionAuth();
 
-  if (!systemUser?.isActive) {
+  if (!session) {
     redirect("/login?error=unauthorized");
   }
 
-  if (!hasPermission(systemUser.role, permission)) {
+  if (!hasPermission(session.systemUser.role, permission)) {
     redirect("/dashboard");
   }
 
-  return systemUser;
+  return session.systemUser;
 }

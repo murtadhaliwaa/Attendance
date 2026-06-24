@@ -8,10 +8,12 @@ import {
   LogIn,
   LogOut,
   Monitor,
+  MonitorSmartphone,
   Settings,
   Users,
   FileBarChart,
 } from "lucide-react";
+import { useKioskTabletMode } from "@/hooks/use-kiosk-tablet-mode";
 import { cn } from "@/lib/utils";
 
 const dashboardItems = [
@@ -25,6 +27,7 @@ const kioskItems = [
   { href: "/kiosk", label: "الحضور و الانصراف", icon: Monitor, exact: true },
   { href: "/kiosk/checkin", label: "الحضور", icon: LogIn },
   { href: "/kiosk/checkout", label: "الانصراف", icon: LogOut },
+  { href: "/kiosk/setup", label: "إعداد التابلت", icon: MonitorSmartphone },
 ];
 
 function NavLink({
@@ -132,8 +135,10 @@ export function KioskMobileNav() {
 
 export function KioskShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { enabled: tabletMode } = useKioskTabletMode();
   const isScanner =
     pathname === "/kiosk/checkin" || pathname === "/kiosk/checkout";
+  const immersiveTablet = tabletMode && isScanner;
 
   return (
     <div
@@ -142,12 +147,12 @@ export function KioskShell({ children }: { children: React.ReactNode }) {
         isScanner ? "h-dvh overflow-hidden" : "min-h-screen"
       )}
     >
-      <KioskSidebar />
+      {!immersiveTablet && <KioskSidebar />}
       <div
         className={cn(
           "flex flex-1 flex-col",
           isScanner ? "min-h-0 overflow-hidden" : "min-h-screen",
-          "pb-16 lg:pb-0"
+          !immersiveTablet && "pb-16 lg:pb-0"
         )}
       >
         <main
@@ -159,7 +164,7 @@ export function KioskShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-      <KioskMobileNav />
+      {!immersiveTablet && <KioskMobileNav />}
     </div>
   );
 }

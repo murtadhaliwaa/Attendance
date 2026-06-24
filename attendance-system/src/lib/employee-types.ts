@@ -24,6 +24,7 @@ export type EmployeeRow = {
   customEndTime: string | null;
   isActive: boolean;
   hasFace: boolean;
+  needsFaceReEnrollment?: boolean;
 };
 
 export type ShiftOption = {

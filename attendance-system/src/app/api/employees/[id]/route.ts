@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/api-auth";
 import { ensureDepartmentExists } from "@/lib/departments";
+import { resolveEmployeeDepartment } from "@/lib/department-resolve";
 import {
   employeeListSelect,
   serializeEmployee,
@@ -12,6 +13,7 @@ import {
   validateEmployeeCode,
 } from "@/lib/employee-validation";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
+import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
 import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 import { prisma } from "@/lib/prisma";
 
@@ -77,6 +79,7 @@ export async function PUT(
     const data: {
       name?: string;
       department?: string;
+      departmentId?: string | null;
       position?: string;
       phone?: string | null;
       employeeCode?: string;
@@ -86,11 +89,13 @@ export async function PUT(
       isActive?: boolean;
       faceDescriptor?: number[];
       hasFaceRegistered?: boolean;
+      faceDescriptorVersion?: number;
     } = {};
 
     if (body.clearFace === true) {
       data.faceDescriptor = [];
       data.hasFaceRegistered = false;
+      data.faceDescriptorVersion = CURRENT_FACE_DESCRIPTOR_VERSION;
     }
 
     if (body.faceDescriptor !== undefined) {
@@ -117,6 +122,7 @@ export async function PUT(
 
       data.faceDescriptor = body.faceDescriptor;
       data.hasFaceRegistered = true;
+      data.faceDescriptorVersion = CURRENT_FACE_DESCRIPTOR_VERSION;
     }
 
     if (body.name !== undefined) {
@@ -127,12 +133,19 @@ export async function PUT(
       data.name = name;
     }
 
-    if (body.department !== undefined) {
-      const department = String(body.department).trim();
-      if (!department) {
-        return NextResponse.json({ error: "القسم مطلوب" }, { status: 400 });
-      }
-      data.department = department;
+    if (body.department !== undefined || body.departmentId !== undefined) {
+      const resolved = await resolveEmployeeDepartment({
+        departmentId:
+          body.departmentId !== undefined
+            ? String(body.departmentId).trim() || null
+            : undefined,
+        departmentName:
+          body.department !== undefined
+            ? String(body.department).trim()
+            : undefined,
+      });
+      data.department = resolved.department;
+      data.departmentId = resolved.departmentId;
     }
 
     if (body.position !== undefined) {
@@ -234,6 +247,12 @@ export async function PUT(
 
     if (data.department) {
       await ensureDepartmentExists(data.department);
+    }
+    if (data.departmentId === null && data.department) {
+      const resolved = await resolveEmployeeDepartment({
+        departmentName: data.department,
+      });
+      data.departmentId = resolved.departmentId;
     }
 
     const employee = await prisma.employee.update({

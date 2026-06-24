@@ -3,27 +3,34 @@ import { requireKioskAuth } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 import { nextEmployeeCode, nextEmergencyCode } from "@/lib/employee-codes";
 import { hasRealFaceDescriptor } from "@/lib/face-descriptor-utils";
+import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
+import { resolveEmployeeDepartment } from "@/lib/department-resolve";
 import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 
 export async function GET(request: Request) {
-  const kioskError = requireKioskAuth(request);
+  const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;
 
   try {
     const employees = await prisma.employee.findMany({
-      where: { isActive: true, hasFaceRegistered: true },
+      where: {
+        isActive: true,
+        hasFaceRegistered: true,
+        faceDescriptorVersion: CURRENT_FACE_DESCRIPTOR_VERSION,
+      },
       orderBy: { name: "asc" },
       select: {
         id: true,
         name: true,
         employeeCode: true,
         faceDescriptor: true,
+        faceDescriptorVersion: true,
       },
     });
 
     const withRealFaces = employees.filter((e) =>
-      hasRealFaceDescriptor(e.faceDescriptor)
+      hasRealFaceDescriptor(e.faceDescriptor, e.faceDescriptorVersion)
     );
 
     return NextResponse.json(
@@ -44,7 +51,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const kioskError = requireKioskAuth(request);
+  const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;
 
   try {
@@ -96,7 +103,14 @@ export async function PUT(request: Request) {
       );
     }
 
-    if (existing && hasRealFaceDescriptor(existing.faceDescriptor)) {
+    if (
+      existing &&
+      hasRealFaceDescriptor(
+        existing.faceDescriptor,
+        existing.faceDescriptorVersion
+      ) &&
+      existing.faceDescriptorVersion === CURRENT_FACE_DESCRIPTOR_VERSION
+    ) {
       return NextResponse.json(
         {
           error: `${existing.name} مسجّل مسبقاً. قف أمام الكاميرا لتسجيل الحضور أو الانصراف`,
@@ -121,6 +135,7 @@ export async function PUT(request: Request) {
         where: { id: existing.id },
         data: {
           faceDescriptor: descriptor,
+          faceDescriptorVersion: CURRENT_FACE_DESCRIPTOR_VERSION,
           hasFaceRegistered: true,
           shiftId: existing.shiftId ?? fallbackShift?.id,
         },
@@ -134,9 +149,10 @@ export async function PUT(request: Request) {
       });
     }
 
-    const [employeeCode, emergencyCode] = await Promise.all([
+    const [employeeCode, emergencyCode, department] = await Promise.all([
       nextEmployeeCode(),
       nextEmergencyCode(),
+      resolveEmployeeDepartment({ fallbackName: "عام" }),
     ]);
 
     const created = await prisma.employee.create({
@@ -144,10 +160,12 @@ export async function PUT(request: Request) {
         name,
         employeeCode,
         emergencyCode,
-        department: "عام",
+        department: department.department,
+        departmentId: department.departmentId,
         position: "موظف",
         shiftId: fallbackShift?.id ?? null,
         faceDescriptor: descriptor,
+        faceDescriptorVersion: CURRENT_FACE_DESCRIPTOR_VERSION,
         hasFaceRegistered: true,
         isActive: true,
       },

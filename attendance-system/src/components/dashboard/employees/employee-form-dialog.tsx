@@ -123,7 +123,7 @@ export function EmployeeFormDialog({
   }, [employees, form.name, isEdit]);
 
   const hasExistingFace = isEdit
-    ? !!employee?.hasFace
+    ? !!employee?.hasFace && !employee?.needsFaceReEnrollment
     : !!matchedEmployeeWithFace;
 
   const selectedShift = shifts.find((shift) => shift.id === form.shiftId);
@@ -393,6 +393,12 @@ export function EmployeeFormDialog({
               description="اختياري — لتسجيل الحضور بالكاميرا في الحضور والانصراف"
               icon={ScanFace}
             >
+              {isEdit && employee?.needsFaceReEnrollment && (
+                <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  البصمة القديمة لم تعد متوافقة. سجّل الوجه من جديد لتفعيل الحضور
+                  بالكاميرا.
+                </p>
+              )}
               <FaceEnrollmentPanel
                 active={open}
                 hasExistingFace={hasExistingFace}

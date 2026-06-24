@@ -1,11 +1,40 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  createKioskSessionToken,
+  kioskSessionCookieOptions,
+  KIOSK_SESSION_COOKIE,
+  verifyKioskSessionToken,
+} from "@/lib/kiosk-session";
 
 function isSupabaseConfigured() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   return !!url && !!key && !url.includes("[project-ref]");
+}
+
+async function ensureKioskSession(
+  request: NextRequest,
+  response: NextResponse
+): Promise<NextResponse> {
+  const secret = process.env.KIOSK_API_KEY?.trim();
+  if (!secret || !request.nextUrl.pathname.startsWith("/kiosk")) {
+    return response;
+  }
+
+  const existing = request.cookies.get(KIOSK_SESSION_COOKIE)?.value;
+  if (existing && (await verifyKioskSessionToken(secret, existing))) {
+    return response;
+  }
+
+  const token = await createKioskSessionToken(secret);
+  response.cookies.set(
+    KIOSK_SESSION_COOKIE,
+    token,
+    kioskSessionCookieOptions()
+  );
+  return response;
 }
 
 export async function middleware(request: NextRequest) {
@@ -21,7 +50,7 @@ export async function middleware(request: NextRequest) {
     if (process.env.NODE_ENV === "production" && isProtectedRoute) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    return supabaseResponse;
+    return ensureKioskSession(request, supabaseResponse);
   }
 
   const supabase = createServerClient(
@@ -57,7 +86,7 @@ export async function middleware(request: NextRequest) {
     if (isProtectedRoute) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    return supabaseResponse;
+    return ensureKioskSession(request, supabaseResponse);
   }
 
   if (isProtectedRoute && !user) {
@@ -68,9 +97,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  return supabaseResponse;
+  return ensureKioskSession(request, supabaseResponse);
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/login", "/kiosk/:path*"],
 };
+

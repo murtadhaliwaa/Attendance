@@ -1,18 +1,60 @@
 /** إعدادات موحّدة لدقة التعرف على الوجه في كل النظام */
 
-/** أقصى مسافة لقبول تطابق في الحضور والانصراف */
-export const FACE_MATCH_THRESHOLD = 0.48;
+import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
 
-/** تطابق قوي — يُقبل مباشرة دون الحاجة لفرق عن وجه ثانٍ */
-export const FACE_STRONG_MATCH_DISTANCE = 0.38;
+/** عتبات v1 (128-d — face-api) */
+export const FACE_MATCH_THRESHOLD_V1 = 0.48;
+export const FACE_STRONG_MATCH_DISTANCE_V1 = 0.38;
+export const DUPLICATE_FACE_MATCH_THRESHOLD_V1 = 0.38;
+export const FACE_MIN_GAP_FROM_SECOND_V1 = 0.1;
+export const DUPLICATE_MIN_GAP_FROM_SECOND_V1 = 0.12;
 
-/** الحد الأدنى للفرق عن ثاني أقرب وجه عند وجود أكثر من موظف */
-export const FACE_MIN_GAP_FROM_SECOND = 0.1;
+/** عتبات v2 (1024-d — Human) — مسافة = 1 - similarity */
+export const FACE_MATCH_THRESHOLD_V2 = 0.5;
+export const FACE_STRONG_MATCH_DISTANCE_V2 = 0.4;
+export const DUPLICATE_FACE_MATCH_THRESHOLD_V2 = 0.42;
+export const FACE_MIN_GAP_FROM_SECOND_V2 = 0.08;
+export const DUPLICATE_MIN_GAP_FROM_SECOND_V2 = 0.1;
 
-/** عتبة اكتشاف التسجيل المكرر — أصرّ من الحضور */
-export const DUPLICATE_FACE_MATCH_THRESHOLD = 0.38;
+/** @deprecated استخدم getFaceMatchThresholds */
+export const FACE_MATCH_THRESHOLD = FACE_MATCH_THRESHOLD_V2;
+/** @deprecated */
+export const FACE_STRONG_MATCH_DISTANCE = FACE_STRONG_MATCH_DISTANCE_V2;
+/** @deprecated */
+export const DUPLICATE_FACE_MATCH_THRESHOLD = DUPLICATE_FACE_MATCH_THRESHOLD_V2;
+/** @deprecated */
+export const FACE_MIN_GAP_FROM_SECOND = FACE_MIN_GAP_FROM_SECOND_V2;
+/** @deprecated */
+export const DUPLICATE_MIN_GAP_FROM_SECOND = DUPLICATE_MIN_GAP_FROM_SECOND_V2;
 
-export const DUPLICATE_MIN_GAP_FROM_SECOND = 0.12;
+export type FaceMatchThresholds = {
+  match: number;
+  strong: number;
+  duplicate: number;
+  minGap: number;
+  duplicateMinGap: number;
+};
+
+export function getFaceMatchThresholds(
+  version = CURRENT_FACE_DESCRIPTOR_VERSION
+): FaceMatchThresholds {
+  if (version === 2) {
+    return {
+      match: FACE_MATCH_THRESHOLD_V2,
+      strong: FACE_STRONG_MATCH_DISTANCE_V2,
+      duplicate: DUPLICATE_FACE_MATCH_THRESHOLD_V2,
+      minGap: FACE_MIN_GAP_FROM_SECOND_V2,
+      duplicateMinGap: DUPLICATE_MIN_GAP_FROM_SECOND_V2,
+    };
+  }
+  return {
+    match: FACE_MATCH_THRESHOLD_V1,
+    strong: FACE_STRONG_MATCH_DISTANCE_V1,
+    duplicate: DUPLICATE_FACE_MATCH_THRESHOLD_V1,
+    minGap: FACE_MIN_GAP_FROM_SECOND_V1,
+    duplicateMinGap: DUPLICATE_MIN_GAP_FROM_SECOND_V1,
+  };
+}
 
 /** عدد اللقطات المتتالية المطلوبة قبل تسجيل الحضور */
 export const CONSECUTIVE_MATCHES_REQUIRED = 3;
@@ -36,16 +78,16 @@ export type ScoredFaceCandidate = {
 
 export function selectBestFaceMatch<T extends ScoredFaceCandidate>(
   candidates: T[],
-  purpose: FaceMatchPurpose
+  purpose: FaceMatchPurpose,
+  version = CURRENT_FACE_DESCRIPTOR_VERSION
 ): T | null {
+  const thresholds = getFaceMatchThresholds(version);
   const threshold =
-    purpose === "duplicate"
-      ? DUPLICATE_FACE_MATCH_THRESHOLD
-      : FACE_MATCH_THRESHOLD;
+    purpose === "duplicate" ? thresholds.duplicate : thresholds.match;
   const minGap =
     purpose === "duplicate"
-      ? DUPLICATE_MIN_GAP_FROM_SECOND
-      : FACE_MIN_GAP_FROM_SECOND;
+      ? thresholds.duplicateMinGap
+      : thresholds.minGap;
 
   const inRange = candidates.filter((c) => c.distance <= threshold);
   if (inRange.length === 0) return null;
@@ -61,7 +103,7 @@ export function selectBestFaceMatch<T extends ScoredFaceCandidate>(
     return best;
   }
 
-  if (best.distance <= FACE_STRONG_MATCH_DISTANCE) {
+  if (best.distance <= thresholds.strong) {
     return best;
   }
 

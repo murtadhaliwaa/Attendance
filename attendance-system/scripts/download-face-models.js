@@ -1,36 +1,38 @@
-const { mkdir, writeFile } = require("fs/promises");
+const { copyFile, mkdir, stat } = require("fs/promises");
 const path = require("path");
 
-const BASE =
-  "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
+/** نماذج Human المطلوبة للكشف + البصمة 1024-d */
+const HUMAN_MODELS = ["blazeface", "facemesh", "faceres"];
 
-const FILES = [
-  "ssd_mobilenetv1_model-weights_manifest.json",
-  "ssd_mobilenetv1_model-shard1",
-  "ssd_mobilenetv1_model-shard2",
-  "face_landmark_68_model-weights_manifest.json",
-  "face_landmark_68_model-shard1",
-  "face_recognition_model-weights_manifest.json",
-  "face_recognition_model-shard1",
-  "face_recognition_model-shard2",
-];
+async function copyModel(srcDir, outDir, name) {
+  for (const ext of [".json", ".bin"]) {
+    const file = `${name}${ext}`;
+    const src = path.join(srcDir, file);
+    const dest = path.join(outDir, file);
+    await copyFile(src, dest);
+    const size = (await stat(dest)).size;
+    console.log(`✓ ${file} (${size} bytes)`);
+  }
+}
 
 async function main() {
-  const outDir = path.join(__dirname, "..", "public", "models");
+  const pkgModels = path.join(
+    __dirname,
+    "..",
+    "node_modules",
+    "@vladmandic",
+    "human",
+    "models"
+  );
+  const outDir = path.join(__dirname, "..", "public", "models", "human");
   await mkdir(outDir, { recursive: true });
 
-  for (const file of FILES) {
-    const url = `${BASE}/${file}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`فشل تنزيل ${file}: ${res.status}`);
-    }
-    const buffer = Buffer.from(await res.arrayBuffer());
-    await writeFile(path.join(outDir, file), buffer);
-    console.log(`✓ ${file} (${buffer.length} bytes)`);
+  for (const name of HUMAN_MODELS) {
+    await copyModel(pkgModels, outDir, name);
   }
 
-  console.log("\nتم تنزيل جميع نماذج التعرف على الوجه");
+  console.log(`\nتم نسخ ${HUMAN_MODELS.length} نماذج Human إلى public/models/human/`);
+  console.log("المسار في التطبيق: /models/human/");
 }
 
 main().catch((error) => {

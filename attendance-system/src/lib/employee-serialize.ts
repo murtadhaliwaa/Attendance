@@ -1,5 +1,7 @@
 import type { EmployeeRow } from "@/lib/employee-types";
 
+import { needsFaceReEnrollment } from "@/lib/face-descriptor-utils";
+
 export const employeeListSelect = {
   id: true,
   employeeCode: true,
@@ -12,6 +14,7 @@ export const employeeListSelect = {
   customEndTime: true,
   isActive: true,
   hasFaceRegistered: true,
+  faceDescriptorVersion: true,
   shift: { select: { name: true } },
 } as const;
 
@@ -27,6 +30,7 @@ export type EmployeeRecordForSerialize = {
   customEndTime: string | null;
   isActive: boolean;
   hasFaceRegistered: boolean;
+  faceDescriptorVersion: number;
   shift: { name: string } | null;
 };
 
@@ -50,5 +54,9 @@ export function serializeEmployee(
     customEndTime: employee.customEndTime,
     isActive: employee.isActive,
     hasFace: employee.hasFaceRegistered,
+    needsFaceReEnrollment: needsFaceReEnrollment(
+      employee.faceDescriptorVersion,
+      employee.hasFaceRegistered
+    ),
   };
 }
