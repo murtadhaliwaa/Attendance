@@ -3,6 +3,7 @@ import { requireKioskAuth } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 import { nextEmployeeCode, nextEmergencyCode } from "@/lib/employee-codes";
 import { hasRealFaceDescriptor } from "@/lib/face-descriptor-utils";
+import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
 import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 
 export async function GET(request: Request) {
@@ -80,6 +81,20 @@ export async function PUT(request: Request) {
         name: { equals: name, mode: "insensitive" },
       },
     });
+
+    const faceMatch = await findEmployeeByFaceDescriptor(
+      descriptor,
+      existing?.id,
+      "duplicate"
+    );
+    if (faceMatch) {
+      return NextResponse.json(
+        {
+          error: `${faceMatch.name} مسجّل مسبقاً في النظام. قف أمام الكاميرا لتسجيل الحضور أو الانصراف`,
+        },
+        { status: 409 }
+      );
+    }
 
     if (existing && hasRealFaceDescriptor(existing.faceDescriptor)) {
       return NextResponse.json(

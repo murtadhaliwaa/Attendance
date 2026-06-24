@@ -103,7 +103,8 @@ export async function PUT(
 
       const duplicate = await findEmployeeByFaceDescriptor(
         body.faceDescriptor,
-        params.id
+        params.id,
+        "duplicate"
       );
       if (duplicate) {
         return NextResponse.json(

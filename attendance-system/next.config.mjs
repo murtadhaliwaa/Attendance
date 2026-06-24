@@ -1,3 +1,8 @@
+import path from "path";
+import { fileURLToPath } from "url";
+
+const appDir = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -36,6 +41,18 @@ const nextConfig = {
     ];
   },
   webpack: (config, { dev, isServer }) => {
+    // أولوية node_modules المحلي — يمنع حل React 19 من المجلد الأب (Prisma Studio)
+    config.resolve.modules = [
+      path.resolve(appDir, "node_modules"),
+      ...(Array.isArray(config.resolve.modules)
+        ? config.resolve.modules
+        : ["node_modules"]),
+    ];
+
+    if (dev) {
+      config.devtool = isServer ? false : "cheap-module-source-map";
+    }
+
     if (dev && !isServer) {
       // Next.js يفرض eval-source-map — نستبدله بعد الإعداد عبر plugin لتجنّب تحذير CSP
       const safeDevtool = "cheap-module-source-map";

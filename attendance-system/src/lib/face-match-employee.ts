@@ -1,7 +1,10 @@
 import { hasRealFaceDescriptor } from "@/lib/face-descriptor-utils";
 import {
+  selectBestFaceMatch,
+  type FaceMatchPurpose,
+} from "@/lib/face-match-config";
+import {
   euclideanDistance,
-  FACE_MATCH_THRESHOLD,
   isValidFaceDescriptor,
 } from "@/lib/face-verify-server";
 import { prisma } from "@/lib/prisma";
@@ -12,9 +15,12 @@ export type FaceMatchEmployee = {
   employeeCode: string;
 };
 
+export type { FaceMatchPurpose };
+
 export async function findEmployeeByFaceDescriptor(
   descriptor: number[],
-  excludeEmployeeId?: string
+  excludeEmployeeId?: string,
+  purpose: FaceMatchPurpose = "duplicate"
 ): Promise<FaceMatchEmployee | null> {
   if (!isValidFaceDescriptor(descriptor)) return null;
 
@@ -31,24 +37,21 @@ export async function findEmployeeByFaceDescriptor(
     },
   });
 
-  let best: (FaceMatchEmployee & { distance: number }) | null = null;
+  const candidates: Array<FaceMatchEmployee & { distance: number }> = [];
 
   for (const employee of employees) {
     if (!hasRealFaceDescriptor(employee.faceDescriptor)) continue;
 
     const distance = euclideanDistance(employee.faceDescriptor, descriptor);
-    if (distance > FACE_MATCH_THRESHOLD) continue;
-
-    if (!best || distance < best.distance) {
-      best = {
-        id: employee.id,
-        name: employee.name,
-        employeeCode: employee.employeeCode,
-        distance,
-      };
-    }
+    candidates.push({
+      id: employee.id,
+      name: employee.name,
+      employeeCode: employee.employeeCode,
+      distance,
+    });
   }
 
+  const best = selectBestFaceMatch(candidates, purpose);
   if (!best) return null;
 
   return {

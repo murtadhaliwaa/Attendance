@@ -1,20 +1,41 @@
 import type * as faceapi from "face-api.js";
 import { getVideoDetectionCanvas } from "@/lib/camera-frame";
+import {
+  CONSECUTIVE_MATCHES_REQUIRED,
+  DUPLICATE_FACE_MATCH_THRESHOLD,
+  ENROLLMENT_MIN_CONFIDENCE,
+  ENROLLMENT_MIN_FACE_SIZE_RATIO,
+  ENROLLMENT_SAMPLES,
+  FACE_MATCH_THRESHOLD,
+  FACE_STRONG_MATCH_DISTANCE,
+  MAX_ENROLLMENT_VARIANCE,
+  SCAN_DETECT_INPUT_SIZE,
+  SCAN_MIN_CONFIDENCE,
+  SCAN_MIN_FACE_SIZE_RATIO,
+  selectBestFaceMatch,
+} from "@/lib/face-match-config";
 
 const MODEL_URL = "/models";
 
-// إعدادات التعرف — مُحسَّنة للسرعة في الحضور والانصراف
-export const MATCH_THRESHOLD = 0.58;
-export const STRONG_MATCH_DISTANCE = 0.42;
-export const MIN_GAP_FROM_SECOND = 0.06;
-export const SCAN_MIN_CONFIDENCE = 0.45;
-export const SCAN_MIN_FACE_SIZE_RATIO = 0.06;
-export const CONSECUTIVE_MATCHES_REQUIRED = 1;
-export const SCAN_DETECT_INPUT_SIZE = 224;
-export const ENROLLMENT_SAMPLES = 7;
-export const MAX_ENROLLMENT_VARIANCE = 0.12;
-export const ENROLLMENT_MIN_CONFIDENCE = 0.5;
-export const ENROLLMENT_MIN_FACE_SIZE_RATIO = 0.08;
+export {
+  CONSECUTIVE_MATCHES_REQUIRED,
+  DUPLICATE_FACE_MATCH_THRESHOLD,
+  ENROLLMENT_MIN_CONFIDENCE,
+  ENROLLMENT_MIN_FACE_SIZE_RATIO,
+  ENROLLMENT_SAMPLES,
+  FACE_MATCH_THRESHOLD,
+  FACE_STRONG_MATCH_DISTANCE,
+  MAX_ENROLLMENT_VARIANCE,
+  SCAN_DETECT_INPUT_SIZE,
+  SCAN_MIN_CONFIDENCE,
+  SCAN_MIN_FACE_SIZE_RATIO,
+};
+
+/** @deprecated استخدم FACE_MATCH_THRESHOLD */
+export const MATCH_THRESHOLD = FACE_MATCH_THRESHOLD;
+/** @deprecated استخدم FACE_STRONG_MATCH_DISTANCE */
+export const STRONG_MATCH_DISTANCE = FACE_STRONG_MATCH_DISTANCE;
+
 export const ENROLLMENT_SAMPLE_RETRIES = 25;
 export const ENROLLMENT_RETRY_DELAY_MS = 200;
 
@@ -155,13 +176,13 @@ export async function detectFaceDescriptor(
   return result?.descriptor ?? null;
 }
 
-export function findBestMatch(
+function scoreEmployeeMatches(
   descriptor: Float32Array,
   employees: EmployeeFaceData[]
-): FaceMatchResult | null {
-  if (!faceApiModule || employees.length === 0) return null;
+): Array<FaceMatchResult & { distance: number }> {
+  if (!faceApiModule) return [];
 
-  const matches: FaceMatchResult[] = [];
+  const scored: Array<FaceMatchResult & { distance: number }> = [];
 
   for (const employee of employees) {
     if (employee.descriptor.length !== 128) continue;
@@ -169,30 +190,50 @@ export function findBestMatch(
     const stored = new Float32Array(employee.descriptor);
     const distance = faceApiModule.euclideanDistance(descriptor, stored);
 
-    if (distance < MATCH_THRESHOLD) {
-      matches.push({
-        employee,
-        distance,
-        confidence: Math.max(0, 1 - distance / MATCH_THRESHOLD),
-      });
-    }
+    scored.push({
+      employee,
+      distance,
+      confidence: Math.max(0, 1 - distance / FACE_MATCH_THRESHOLD),
+    });
   }
 
-  if (matches.length === 0) return null;
+  return scored;
+}
 
-  matches.sort((a, b) => a.distance - b.distance);
-  const best = matches[0];
+export function findBestMatch(
+  descriptor: Float32Array,
+  employees: EmployeeFaceData[]
+): FaceMatchResult | null {
+  if (employees.length === 0) return null;
 
-  if (best.distance <= STRONG_MATCH_DISTANCE) {
-    return best;
-  }
+  const best = selectBestFaceMatch(scoreEmployeeMatches(descriptor, employees), "recognize");
+  if (!best) return null;
 
-  if (matches.length > 1) {
-    const gap = matches[1].distance - best.distance;
-    if (gap < MIN_GAP_FROM_SECOND) return null;
-  }
+  return {
+    employee: best.employee,
+    distance: best.distance,
+    confidence: Math.max(0, 1 - best.distance / FACE_MATCH_THRESHOLD),
+  };
+}
 
-  return best;
+/** تحقق صارم من التسجيل المكرر — للاستخدام عند إضافة موظف جديد فقط */
+export function findStrictDuplicateMatch(
+  descriptor: Float32Array,
+  employees: EmployeeFaceData[]
+): FaceMatchResult | null {
+  if (employees.length === 0) return null;
+
+  const best = selectBestFaceMatch(
+    scoreEmployeeMatches(descriptor, employees),
+    "duplicate"
+  );
+  if (!best) return null;
+
+  return {
+    employee: best.employee,
+    distance: best.distance,
+    confidence: Math.max(0, 1 - best.distance / DUPLICATE_FACE_MATCH_THRESHOLD),
+  };
 }
 
 export function averageDescriptors(descriptors: Float32Array[]): Float32Array {

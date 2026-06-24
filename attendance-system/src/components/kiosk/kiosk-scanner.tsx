@@ -30,8 +30,10 @@ import { KIOSK_MODE_LABELS, type KioskMode } from "@/lib/kiosk-types";
 import { cn } from "@/lib/utils";
 import {
   captureEnrollmentDescriptor,
+  CONSECUTIVE_MATCHES_REQUIRED,
   detectFaceForScan,
   findBestMatch,
+  findStrictDuplicateMatch,
   loadScanFaceModels,
   loadEnrollmentFaceModels,
   descriptorToArray,
@@ -186,7 +188,7 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
   const unknownHoldUntilRef = useRef(0);
 
   const [state, setState] = useState<KioskState>("loading");
-  const [statusText, setStatusText] = useState("جاري تحميل النماذج...");
+  const [statusText, setStatusText] = useState("جاري طلب صلاحية الكاميرا...");
   const [verifyProgress, setVerifyProgress] = useState(0);
   const [employees, setEmployees] = useState<EmployeeFaceData[]>([]);
   const [result, setResult] = useState<AttendanceResult | null>(null);
@@ -524,6 +526,32 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
       unknownHoldUntilRef.current = 0;
       setRecognizedName(match.employee.name);
 
+      const streak = matchStreakRef.current;
+      if (streak?.employeeId === match.employee.id) {
+        streak.count += 1;
+      } else {
+        matchStreakRef.current = {
+          employeeId: match.employee.id,
+          count: 1,
+          name: match.employee.name,
+        };
+      }
+
+      const currentCount = matchStreakRef.current!.count;
+      setVerifyProgress(
+        Math.min(
+          100,
+          Math.round((currentCount / CONSECUTIVE_MATCHES_REQUIRED) * 100)
+        )
+      );
+
+      if (currentCount < CONSECUTIVE_MATCHES_REQUIRED) {
+        return;
+      }
+
+      matchStreakRef.current = null;
+      setVerifyProgress(100);
+
       const today = await getTodayStatus(match.employee.id);
 
       const blockReason = getBlockReason(mode, today);
@@ -594,8 +622,14 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
     if (!enrollName.trim() || !videoRef.current) return;
     if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
     setState("processing");
-    setStatusText(`جاري تسجيل ${enrollName.trim()} — ثبّت وجهك داخل الإطار...`);
+
+    const duplicateFaceMessage = (employeeName: string) =>
+      `${employeeName} مسجّل مسبقاً في النظام. قف أمام الكاميرا لتسجيل الحضور فقط`;
+
     try {
+      setStatusText(
+        `جاري تسجيل ${enrollName.trim()} — ثبّت وجهك داخل الإطار...`
+      );
       const descriptor = await captureEnrollmentDescriptor(
         videoRef.current,
         (current, total) => {
@@ -604,6 +638,14 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
           );
         }
       );
+
+      if (employees.length > 0) {
+        setStatusText("جاري التحقق بدقة من بصمة الوجه...");
+        const faceMatch = findStrictDuplicateMatch(descriptor, employees);
+        if (faceMatch) {
+          throw new Error(duplicateFaceMessage(faceMatch.employee.name));
+        }
+      }
 
       const res = await fetch("/api/employees/descriptors", {
         method: "PUT",
@@ -625,9 +667,13 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
       setState("scanning");
       setStatusText("تم التسجيل! في المرات القادمة قف أمام الكاميرا فقط");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "فشل التسجيل");
+      const message =
+        error instanceof Error ? error.message : "فشل التسجيل";
+      toast.error(message);
+      setShowEnroll(false);
+      setEnrollName("");
       setState("scanning");
-      setStatusText(idleStatus);
+      setStatusText(message);
     }
   };
 
@@ -638,15 +684,19 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
 
     async function init() {
       try {
-        setStatusText("جاري التحضير...");
-        const [, employeesData] = await Promise.all([
-          loadScanFaceModels(),
-          loadEmployees(),
-        ]);
+        setStatusText("جاري طلب صلاحية الكاميرا...");
+
+        const modelsPromise = loadScanFaceModels();
+        const employeesPromise = loadEmployees();
+
+        await startCamera();
         if (cancelled) return;
 
-        setStatusText("جاري تشغيل الكاميرا...");
-        await startCamera();
+        setStatusText("جاري تحميل نماذج التعرف...");
+        const [, employeesData] = await Promise.all([
+          modelsPromise,
+          employeesPromise,
+        ]);
         if (cancelled) return;
 
         setState("scanning");
@@ -872,7 +922,7 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
                     )}
                   </div>
                 )}
-                {state === "loading" && (
+                {state === "loading" && !cameraReady && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/80">
                     <Loader2 className="size-10 animate-spin text-blue-primary" />
                   </div>
@@ -945,6 +995,10 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
           {showEmergency && (
             <div className="flex shrink-0 items-center gap-2">
               <Input
+                id="kiosk-emergency-code"
+                aria-label="الرمز الطارئ"
+                name="emergencyCode"
+                autoComplete="one-time-code"
                 placeholder="أدخل الرمز الطارئ"
                 value={emergencyCode}
                 onChange={(e) => setEmergencyCode(e.target.value)}
@@ -971,6 +1025,10 @@ export function KioskScanner({ mode, kioskApiKey }: KioskScannerProps) {
               </p>
               <div className="flex gap-2">
                 <Input
+                  id="kiosk-enroll-name"
+                  aria-label="الاسم الكامل"
+                  name="employeeName"
+                  autoComplete="name"
                   placeholder="مثال: محمد العتيبي"
                   value={enrollName}
                   onChange={(e) => setEnrollName(e.target.value)}

@@ -32,7 +32,8 @@ export async function POST(request: Request) {
 
     const match = await findEmployeeByFaceDescriptor(
       descriptor,
-      excludeEmployeeId?.trim() || undefined
+      excludeEmployeeId?.trim() || undefined,
+      "duplicate"
     );
 
     return NextResponse.json({ match });

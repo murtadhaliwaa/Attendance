@@ -1,6 +1,7 @@
 const SCAN_DETECT_MAX_WIDTH = 480;
 
 let detectionCanvas: HTMLCanvasElement | null = null;
+let detectionCtx: CanvasRenderingContext2D | null = null;
 
 export function getVideoDetectionCanvas(
   video: HTMLVideoElement
@@ -9,7 +10,12 @@ export function getVideoDetectionCanvas(
 
   if (!detectionCanvas) {
     detectionCanvas = document.createElement("canvas");
+    detectionCtx = detectionCanvas.getContext("2d", {
+      willReadFrequently: true,
+    });
   }
+
+  if (!detectionCtx) return null;
 
   let width = video.videoWidth;
   let height = video.videoHeight;
@@ -23,12 +29,9 @@ export function getVideoDetectionCanvas(
   detectionCanvas.width = width;
   detectionCanvas.height = height;
 
-  const ctx = detectionCanvas.getContext("2d");
-  if (!ctx) return null;
-
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, width, height);
-  ctx.drawImage(video, 0, 0, width, height);
+  detectionCtx.setTransform(1, 0, 0, 1, 0, 0);
+  detectionCtx.clearRect(0, 0, width, height);
+  detectionCtx.drawImage(video, 0, 0, width, height);
 
   return detectionCanvas;
 }

@@ -42,6 +42,8 @@ export function LoginForm() {
         <Input
           id="email"
           type="email"
+          name="email"
+          autoComplete="email"
           placeholder="hr@company.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -56,6 +58,8 @@ export function LoginForm() {
         <Input
           id="password"
           type="password"
+          name="password"
+          autoComplete="current-password"
           placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

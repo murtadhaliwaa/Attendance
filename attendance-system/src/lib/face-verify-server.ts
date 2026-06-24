@@ -1,5 +1,22 @@
-/** نفس عتبة التطابق المستخدمة في الحضور والانصراف */
-export const FACE_MATCH_THRESHOLD = 0.58;
+import { FACE_MATCH_THRESHOLD } from "@/lib/face-match-config";
+
+export {
+  CONSECUTIVE_MATCHES_REQUIRED,
+  DUPLICATE_FACE_MATCH_THRESHOLD,
+  DUPLICATE_MIN_GAP_FROM_SECOND,
+  ENROLLMENT_MIN_CONFIDENCE,
+  ENROLLMENT_MIN_FACE_SIZE_RATIO,
+  ENROLLMENT_SAMPLES,
+  FACE_MATCH_THRESHOLD,
+  FACE_MIN_GAP_FROM_SECOND,
+  FACE_STRONG_MATCH_DISTANCE,
+  MAX_ENROLLMENT_VARIANCE,
+  SCAN_DETECT_INPUT_SIZE,
+  SCAN_MIN_CONFIDENCE,
+  SCAN_MIN_FACE_SIZE_RATIO,
+  selectBestFaceMatch,
+  type FaceMatchPurpose,
+} from "@/lib/face-match-config";
 
 export function isValidFaceDescriptor(
   descriptor: unknown
