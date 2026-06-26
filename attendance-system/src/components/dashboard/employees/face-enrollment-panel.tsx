@@ -8,6 +8,8 @@ import {
   descriptorToArray,
   loadEnrollmentFaceModels,
 } from "@/lib/face-recognition";
+import { dashboardFetch } from "@/lib/api-utils";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 interface FaceEnrollmentPanelProps {
@@ -17,7 +19,7 @@ interface FaceEnrollmentPanelProps {
   captured: number[] | null;
   cleared: boolean;
   excludeEmployeeId?: string;
-  onCaptured: (descriptor: number[] | null) => void;
+  onCaptured: (descriptor: number[] | null, forced?: boolean) => void;
   onClearExisting: () => void;
   onUndoClear: () => void;
 }
@@ -44,6 +46,10 @@ export function FaceEnrollmentPanel({
     name: string;
     employeeCode: string;
   } | null>(null);
+  // البصمة الملتقطة المعلّقة عند ظهور تشابه — تُستخدم لو اختار المشرف التجاوز.
+  const [pendingDescriptor, setPendingDescriptor] = useState<number[] | null>(
+    null
+  );
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -131,6 +137,7 @@ export function FaceEnrollmentPanel({
       setProgress("");
       setCapturing(false);
       setDuplicateMatch(null);
+      setPendingDescriptor(null);
     }
   }, [active]);
 
@@ -149,9 +156,19 @@ export function FaceEnrollmentPanel({
       const arr = descriptorToArray(descriptor);
 
       setProgress("جاري التحقق من البصمة...");
-      const res = await fetch("/api/employees/face-match", {
+
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error(
+          "انتهت جلسة الدخول — أعد تسجيل الدخول ثم حاول مرة أخرى"
+        );
+      }
+
+      const res = await dashboardFetch("/api/employees/face-match", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           descriptor: arr,
           excludeEmployeeId: excludeEmployeeId ?? undefined,
@@ -160,6 +177,12 @@ export function FaceEnrollmentPanel({
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
+        if (res.status === 401) {
+          throw new Error(
+            data.error ??
+              "انتهت جلسة الدخول — أعد تسجيل الدخول ثم حاول مرة أخرى"
+          );
+        }
         throw new Error(data.error || "فشل التحقق من بصمة الوجه");
       }
 
@@ -169,6 +192,7 @@ export function FaceEnrollmentPanel({
 
       if (data.match) {
         setDuplicateMatch(data.match);
+        setPendingDescriptor(arr);
         setProgress("");
         setShowCamera(false);
         stopCamera();
@@ -176,6 +200,7 @@ export function FaceEnrollmentPanel({
       }
 
       setDuplicateMatch(null);
+      setPendingDescriptor(null);
       onCaptured(arr);
       setProgress("");
       setShowCamera(false);
@@ -195,12 +220,45 @@ export function FaceEnrollmentPanel({
   return (
     <div className="space-y-3">
       {duplicateMatch && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-sm text-rose-200">
-          بصمة الوجه مسجّلة مسبقاً للموظف{" "}
-          <span className="font-medium text-rose-100">
-            {duplicateMatch.name}
-          </span>{" "}
-          ({duplicateMatch.employeeCode})
+        <div className="space-y-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-sm text-rose-200">
+          <p>
+            بصمة الوجه تشبه الموظف{" "}
+            <span className="font-medium text-rose-100">
+              {duplicateMatch.name}
+            </span>{" "}
+            ({duplicateMatch.employeeCode}). إن كان هذا شخصاً مختلفاً فعلاً،
+            يمكنك التسجيل رغم التشابه.
+          </p>
+          {pendingDescriptor && (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 border-rose-400/40 px-2 text-xs text-rose-100 hover:bg-rose-500/20"
+                onClick={() => {
+                  onCaptured(pendingDescriptor, true);
+                  setDuplicateMatch(null);
+                  setPendingDescriptor(null);
+                }}
+              >
+                هذا شخص مختلف — سجّل البصمة
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                onClick={() => {
+                  setDuplicateMatch(null);
+                  setPendingDescriptor(null);
+                  setShowCamera(true);
+                }}
+              >
+                إعادة المحاولة
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

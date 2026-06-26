@@ -106,18 +106,20 @@ export async function PUT(
         );
       }
 
-      const duplicate = await findEmployeeByFaceDescriptor(
-        body.faceDescriptor,
-        params.id,
-        "duplicate"
-      );
-      if (duplicate) {
-        return NextResponse.json(
-          {
-            error: `بصمة الوجه مسجّلة مسبقاً للموظف ${duplicate.name} (${duplicate.employeeCode})`,
-          },
-          { status: 409 }
+      if (body.forceFace !== true) {
+        const duplicate = await findEmployeeByFaceDescriptor(
+          body.faceDescriptor,
+          params.id,
+          "duplicate"
         );
+        if (duplicate) {
+          return NextResponse.json(
+            {
+              error: `بصمة الوجه مسجّلة مسبقاً للموظف ${duplicate.name} (${duplicate.employeeCode})`,
+            },
+            { status: 409 }
+          );
+        }
       }
 
       data.faceDescriptor = body.faceDescriptor;

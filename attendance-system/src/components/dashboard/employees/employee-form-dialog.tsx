@@ -106,7 +106,13 @@ export function EmployeeFormDialog({
   const [form, setForm] = useState<EmployeeFormData>(emptyEmployeeForm());
   const [saving, setSaving] = useState(false);
   const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
+  const [faceForced, setFaceForced] = useState(false);
   const [clearFace, setClearFace] = useState(false);
+
+  const handleFaceCaptured = (descriptor: number[] | null, forced = false) => {
+    setFaceDescriptor(descriptor);
+    setFaceForced(descriptor ? forced : false);
+  };
 
   const matchedEmployeeWithFace = useMemo(() => {
     if (isEdit) return null;
@@ -138,6 +144,7 @@ export function EmployeeFormDialog({
         shiftId: data.shiftId || shifts[0]?.id || "",
       });
       setFaceDescriptor(null);
+      setFaceForced(false);
       setClearFace(false);
     } else {
       setForm({
@@ -147,6 +154,7 @@ export function EmployeeFormDialog({
         shiftId: shifts[0]?.id ?? "",
       });
       setFaceDescriptor(null);
+      setFaceForced(false);
       setClearFace(false);
     }
   }, [open, employee, suggestedCode, suggestedEmergencyCode, shifts, departments]);
@@ -178,6 +186,7 @@ export function EmployeeFormDialog({
         shiftId: form.shiftId,
         customEndTime: form.customEndTime.trim() || null,
         ...(faceDescriptor ? { faceDescriptor } : {}),
+        ...(faceDescriptor && faceForced ? { forceFace: true } : {}),
         ...(clearFace ? { clearFace: true } : {}),
       };
 
@@ -406,7 +415,7 @@ export function EmployeeFormDialog({
                 captured={faceDescriptor}
                 cleared={clearFace}
                 excludeEmployeeId={employee?.id}
-                onCaptured={setFaceDescriptor}
+                onCaptured={handleFaceCaptured}
                 onClearExisting={() => setClearFace(true)}
                 onUndoClear={() => setClearFace(false)}
               />

@@ -185,7 +185,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (hasFace) {
+    if (hasFace && body.forceFace !== true) {
       const duplicate = await findEmployeeByFaceDescriptor(
         faceDescriptor,
         undefined,

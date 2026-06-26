@@ -21,7 +21,10 @@ export const DUPLICATE_MIN_GAP_FROM_SECOND_V1 = 0.12;
  */
 export const FACE_MATCH_THRESHOLD_V2 = 0.45;
 export const FACE_STRONG_MATCH_DISTANCE_V2 = 0.4;
-export const DUPLICATE_FACE_MATCH_THRESHOLD_V2 = 0.42;
+// كشف التكرار عند التسجيل: شُدِّد إلى 0.36 (تشابه ~64%) لتقليل الإنذارات الكاذبة
+// التي تمنع تسجيل موظف جديد بسبب تشابهه السطحي مع موظف آخر. التكرار الحقيقي
+// لنفس الشخص بلقطة جيدة يكون أقل بكثير من ذلك. المشرف يملك زر تجاوز عند اللزوم.
+export const DUPLICATE_FACE_MATCH_THRESHOLD_V2 = 0.36;
 export const FACE_MIN_GAP_FROM_SECOND_V2 = 0.1;
 export const DUPLICATE_MIN_GAP_FROM_SECOND_V2 = 0.12;
 
