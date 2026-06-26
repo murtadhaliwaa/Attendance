@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { parseJsonResponse } from "@/lib/api-utils";
+import { useKioskCamera } from "@/hooks/use-kiosk-camera";
 import {
   averageDescriptors,
   detectFaceForScan,
@@ -49,11 +50,10 @@ const CAPTURE_FRAMES = 5;
 const CAPTURE_RETRIES = 20;
 
 export function FaceCalibrationTool() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const employeesRef = useRef<CalibrationEmployee[]>([]);
+  const { videoRef, cameraReady, startCamera, stopCamera } = useKioskCamera();
 
-  const [cameraOn, setCameraOn] = useState(false);
+  const [sessionActive, setSessionActive] = useState(false);
   const [starting, setStarting] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
@@ -62,18 +62,18 @@ export function FaceCalibrationTool() {
 
   const thresholds = getFaceMatchThresholds();
 
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    setCameraOn(false);
-  }, []);
+  const endSession = useCallback(() => {
+    stopCamera();
+    setSessionActive(false);
+  }, [stopCamera]);
 
-  useEffect(() => stopCamera, [stopCamera]);
+  useEffect(() => () => endSession(), [endSession]);
 
-  async function startCamera() {
+  async function handleStart() {
     setStarting(true);
     setResult(null);
+    // يجب أن يكون عنصر الفيديو في الصفحة قبل طلب البث — لذلك نُفعّل الجلسة أولاً
+    setSessionActive(true);
     try {
       const [, res] = await Promise.all([
         loadScanFaceModels(),
@@ -86,21 +86,12 @@ export function FaceCalibrationTool() {
       employeesRef.current = list;
       setLoadedCount(list.length);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: 640, height: 480 },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {});
-      }
-      setCameraOn(true);
+      await startCamera();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "تعذّر تشغيل الكاميرا"
       );
-      stopCamera();
+      endSession();
     } finally {
       setStarting(false);
     }
@@ -205,10 +196,10 @@ export function FaceCalibrationTool() {
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!cameraOn ? (
+        {!sessionActive ? (
           <Button
             variant="primary"
-            onClick={startCamera}
+            onClick={handleStart}
             disabled={starting}
             className="w-full sm:w-auto"
           >
@@ -227,10 +218,19 @@ export function FaceCalibrationTool() {
             <div className="relative mx-auto aspect-[4/3] w-full max-w-sm overflow-hidden rounded-xl border border-bg-border bg-black">
               <video
                 ref={videoRef}
+                autoPlay
                 playsInline
                 muted
-                className="size-full -scale-x-100 object-cover"
+                className="size-full object-cover [transform:scaleX(-1)]"
               />
+              {!cameraReady && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80">
+                  <Loader2 className="size-6 animate-spin text-blue-primary" />
+                  <span className="text-xs text-text-secondary">
+                    جاري تشغيل الكاميرا...
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -254,7 +254,7 @@ export function FaceCalibrationTool() {
                 <Button
                   variant="primary"
                   onClick={analyze}
-                  disabled={analyzing}
+                  disabled={analyzing || !cameraReady}
                 >
                   {analyzing ? (
                     <Loader2 className="animate-spin" />
@@ -263,7 +263,7 @@ export function FaceCalibrationTool() {
                   )}
                   التقاط وتحليل
                 </Button>
-                <Button variant="outline" onClick={stopCamera}>
+                <Button variant="outline" onClick={endSession}>
                   إيقاف
                 </Button>
               </div>
