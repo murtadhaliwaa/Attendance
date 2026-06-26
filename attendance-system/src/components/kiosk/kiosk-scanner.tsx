@@ -42,6 +42,10 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     showEmergency,
     emergencyCode,
     setEmergencyCode,
+    emergencyEmployeeId,
+    setEmergencyEmployeeId,
+    roster,
+    rosterLoading,
     handleEmergency,
     toggleEmergency,
     showEnroll,
@@ -160,6 +164,10 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 showEmergency={showEmergency}
                 emergencyCode={emergencyCode}
                 onEmergencyCodeChange={setEmergencyCode}
+                emergencyEmployeeId={emergencyEmployeeId}
+                onEmergencyEmployeeChange={setEmergencyEmployeeId}
+                roster={roster}
+                rosterLoading={rosterLoading}
                 onToggleEmergency={toggleEmergency}
                 onSubmitEmergency={handleEmergency}
                 showEnroll={showEnroll}

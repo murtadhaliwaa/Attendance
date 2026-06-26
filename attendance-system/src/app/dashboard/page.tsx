@@ -19,6 +19,7 @@ import {
   StatusLabel,
 } from "@/components/dashboard/type-label";
 import { TimeCell } from "@/components/dashboard/time-cell";
+import { AttendanceMethodBadge } from "@/components/dashboard/attendance-method-badge";
 import {
   formatLateDuration,
   formatTimeAr,
@@ -59,6 +60,10 @@ export default async function DashboardPage() {
         checkIn: true,
         checkOut: true,
         status: true,
+        checkInMethod: true,
+        checkOutMethod: true,
+        checkInSupervisorName: true,
+        checkOutSupervisorName: true,
         employee: {
           select: {
             name: true,
@@ -104,6 +109,10 @@ export default async function DashboardPage() {
       status: displayStatus,
       lateMinutes:
         displayStatus === "LATE" || status === "LATE" ? lateMinutes : 0,
+      checkInMethod: record.checkInMethod,
+      checkOutMethod: record.checkOutMethod,
+      checkInSupervisorName: record.checkInSupervisorName,
+      checkOutSupervisorName: record.checkOutSupervisorName,
     };
   });
 
@@ -212,7 +221,7 @@ export default async function DashboardPage() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 rounded-lg bg-bg-elevated/50 px-3 py-2">
-                      <div className="text-center">
+                      <div className="flex flex-col items-center gap-1 text-center">
                         <p className="text-[11px] text-text-muted">الحضور</p>
                         <TimeCell
                           value={
@@ -221,8 +230,12 @@ export default async function DashboardPage() {
                               : null
                           }
                         />
+                        <AttendanceMethodBadge
+                          method={record.checkInMethod}
+                          supervisorName={record.checkInSupervisorName}
+                        />
                       </div>
-                      <div className="text-center">
+                      <div className="flex flex-col items-center gap-1 text-center">
                         <p className="text-[11px] text-text-muted">الانصراف</p>
                         <TimeCell
                           value={
@@ -230,6 +243,10 @@ export default async function DashboardPage() {
                               ? formatTimeAr(record.checkOut)
                               : null
                           }
+                        />
+                        <AttendanceMethodBadge
+                          method={record.checkOutMethod}
+                          supervisorName={record.checkOutSupervisorName}
                         />
                       </div>
                     </div>
@@ -254,22 +271,34 @@ export default async function DashboardPage() {
                           {record.employeeName}
                         </TableCell>
                         <TableCell className="text-center">
-                          <TimeCell
-                            value={
-                              record.checkIn
-                                ? formatTimeAr(record.checkIn)
-                                : null
-                            }
-                          />
+                          <div className="flex flex-col items-center gap-1">
+                            <TimeCell
+                              value={
+                                record.checkIn
+                                  ? formatTimeAr(record.checkIn)
+                                  : null
+                              }
+                            />
+                            <AttendanceMethodBadge
+                              method={record.checkInMethod}
+                              supervisorName={record.checkInSupervisorName}
+                            />
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <TimeCell
-                            value={
-                              record.checkOut
-                                ? formatTimeAr(record.checkOut)
-                                : null
-                            }
-                          />
+                          <div className="flex flex-col items-center gap-1">
+                            <TimeCell
+                              value={
+                                record.checkOut
+                                  ? formatTimeAr(record.checkOut)
+                                  : null
+                              }
+                            />
+                            <AttendanceMethodBadge
+                              method={record.checkOutMethod}
+                              supervisorName={record.checkOutSupervisorName}
+                            />
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex flex-col items-center gap-1">

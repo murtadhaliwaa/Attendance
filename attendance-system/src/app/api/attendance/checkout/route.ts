@@ -112,7 +112,7 @@ export async function POST(request: Request) {
       data: {
         checkOut: now,
         status,
-        method: Method.FACE,
+        checkOutMethod: Method.FACE,
       },
     });
 

@@ -9,8 +9,10 @@ import {
 } from "@/components/ui/table";
 import { DepartmentsSettings } from "@/components/dashboard/settings/departments-settings";
 import { ShiftsSettings } from "@/components/dashboard/settings/shifts-settings";
+import { ShiftSupervisorsSettings } from "@/components/dashboard/settings/shift-supervisors-settings";
 import { FaceCalibrationSection } from "@/components/dashboard/settings/face-calibration-section";
 import { getDepartmentRows } from "@/lib/departments";
+import { getSupervisorRows } from "@/lib/supervisors";
 import { ensureDefaultShifts } from "@/lib/shifts";
 import { requirePagePermission } from "@/lib/page-auth";
 import { ROLE_LABELS } from "@/lib/permissions";
@@ -32,18 +34,20 @@ async function loadShiftsWithDefaults() {
 }
 
 async function loadSettingsData() {
-  const [shifts, users, departments] = await Promise.all([
+  const [shifts, users, departments, supervisors] = await Promise.all([
     loadShiftsWithDefaults(),
     prisma.systemUser.findMany({ orderBy: { name: "asc" } }),
     getDepartmentRows(),
+    getSupervisorRows(),
   ]);
 
-  return { shifts, users, departments };
+  return { shifts, users, departments, supervisors };
 }
 
 export default async function SettingsPage() {
   await requirePagePermission("settings:read");
-  const { shifts, users, departments } = await withDbRetry(loadSettingsData);
+  const { shifts, users, departments, supervisors } =
+    await withDbRetry(loadSettingsData);
 
   const shiftRows: ShiftRow[] = shifts.map((shift) => ({
     id: shift.id,
@@ -60,6 +64,7 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-5xl space-y-4">
       <ShiftsSettings initialShifts={shiftRows} />
       <DepartmentsSettings initialDepartments={departments} />
+      <ShiftSupervisorsSettings initialSupervisors={supervisors} />
       <FaceCalibrationSection />
 
       <Card className="border border-bg-border bg-bg-card">

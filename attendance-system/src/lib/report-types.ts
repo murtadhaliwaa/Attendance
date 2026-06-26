@@ -1,4 +1,4 @@
-import type { Status } from "@prisma/client";
+import type { Status, Method } from "@prisma/client";
 
 export type ReportFilters = {
   from?: string;
@@ -48,6 +48,10 @@ export type EmployeeDayRecord = {
   checkOut: string | null;
   isWorkingDay: boolean;
   lateMinutes: number | null;
+  checkInMethod: Method | null;
+  checkOutMethod: Method | null;
+  checkInSupervisorName: string | null;
+  checkOutSupervisorName: string | null;
 };
 
 export type EmployeeReportSummary = {

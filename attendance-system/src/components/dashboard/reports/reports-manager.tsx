@@ -45,6 +45,7 @@ import type { EmployeeReportData, WeeklyReportData } from "@/lib/report-types";
 import type { ShiftOption } from "@/lib/employee-types";
 import { formatShiftRangeLabel } from "@/lib/schedule-utils";
 import { DayStatusBadge } from "@/components/dashboard/day-status-badge";
+import { AttendanceMethodBadge } from "@/components/dashboard/attendance-method-badge";
 import { SelectionCard } from "@/components/dashboard/selection-card";
 import { TimeCell } from "@/components/dashboard/time-cell";
 import { cn } from "@/lib/utils";
@@ -192,10 +193,22 @@ function EmployeeReportDetail({
                     <DayStatusBadge status={day.status} />
                   </TableCell>
                   <TableCell className="text-center">
-                    <TimeCell value={day.checkIn} />
+                    <div className="flex flex-col items-center gap-1">
+                      <TimeCell value={day.checkIn} />
+                      <AttendanceMethodBadge
+                        method={day.checkInMethod}
+                        supervisorName={day.checkInSupervisorName}
+                      />
+                    </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    <TimeCell value={day.checkOut} />
+                    <div className="flex flex-col items-center gap-1">
+                      <TimeCell value={day.checkOut} />
+                      <AttendanceMethodBadge
+                        method={day.checkOutMethod}
+                        supervisorName={day.checkOutSupervisorName}
+                      />
+                    </div>
                   </TableCell>
                   <TableCell className="text-center text-amber-200">
                     {day.lateMinutes && day.lateMinutes > 0

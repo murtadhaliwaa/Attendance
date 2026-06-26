@@ -79,13 +79,29 @@ export function useKioskAttendanceApi(mode: KioskMode) {
     [mode]
   );
 
+  const loadRoster = useCallback(async () => {
+    const { res, data } = await kioskJson<
+      Array<{
+        id: string;
+        name: string;
+        employeeCode: string;
+        department: string;
+      }>
+    >("/api/employees/roster");
+
+    if (!res.ok) {
+      throw new Error("فشل تحميل قائمة الموظفين");
+    }
+    return data;
+  }, []);
+
   const submitEmergency = useCallback(
-    async (emergencyCode: string) => {
+    async (employeeId: string, emergencyCode: string) => {
       const { res, data } = await kioskJson<AttendanceResult & { error?: string }>(
         "/api/attendance/emergency",
         {
           method: "POST",
-          body: JSON.stringify({ emergencyCode, mode }),
+          body: JSON.stringify({ employeeId, emergencyCode, mode }),
         }
       );
 
@@ -113,6 +129,7 @@ export function useKioskAttendanceApi(mode: KioskMode) {
 
   return {
     loadEmployees,
+    loadRoster,
     getTodayStatus,
     recordAttendance,
     submitEmergency,

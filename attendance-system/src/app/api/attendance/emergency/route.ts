@@ -25,29 +25,50 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { emergencyCode?: string; mode?: KioskMode };
+  let body: { employeeId?: string; emergencyCode?: string; mode?: KioskMode };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "بيانات الطلب غير صالحة" }, { status: 400 });
   }
 
+  const employeeId = String(body.employeeId ?? "").trim();
   const emergencyCode = String(body.emergencyCode ?? "").trim();
   const mode = body.mode === "checkout" ? "checkout" : "checkin";
 
+  if (!employeeId) {
+    return NextResponse.json({ error: "اختر الموظف أولاً" }, { status: 400 });
+  }
+
   if (!emergencyCode) {
-    return NextResponse.json({ error: "الرمز مطلوب" }, { status: 400 });
+    return NextResponse.json(
+      { error: "أدخل الرمز الطارئ الخاص بمسؤول الشفت" },
+      { status: 400 }
+    );
+  }
+
+  // رمز المشرف يعمل على كل الموظفين؛ نتحقق منه ونحفظ مَن سجّل.
+  const supervisor = await prisma.shiftSupervisor.findFirst({
+    where: { emergencyCode, isActive: true },
+    select: { id: true, name: true },
+  });
+
+  if (!supervisor) {
+    return NextResponse.json(
+      { error: "رمز مسؤول الشفت غير صحيح" },
+      { status: 403 }
+    );
   }
 
   const employee = await prisma.employee.findFirst({
-    where: { emergencyCode, isActive: true },
+    where: { id: employeeId, isActive: true },
     include: {
       shift: { select: employeeShiftSelect },
     },
   });
 
   if (!employee) {
-    return NextResponse.json({ error: "رمز غير صحيح" }, { status: 404 });
+    return NextResponse.json({ error: "الموظف غير موجود" }, { status: 404 });
   }
 
   const today = getTodayDate();
@@ -79,12 +100,16 @@ export async function POST(request: Request) {
         date: today,
         checkIn: now,
         status,
-        method: Method.EMERGENCY_CODE,
+        checkInMethod: Method.EMERGENCY_CODE,
+        checkInSupervisorId: supervisor.id,
+        checkInSupervisorName: supervisor.name,
       },
       update: {
         checkIn: now,
         status,
-        method: Method.EMERGENCY_CODE,
+        checkInMethod: Method.EMERGENCY_CODE,
+        checkInSupervisorId: supervisor.id,
+        checkInSupervisorName: supervisor.name,
       },
     });
 
@@ -123,7 +148,13 @@ export async function POST(request: Request) {
     where: {
       employeeId_date: { employeeId: employee.id, date: today },
     },
-    data: { checkOut: now, status, method: Method.EMERGENCY_CODE },
+    data: {
+      checkOut: now,
+      status,
+      checkOutMethod: Method.EMERGENCY_CODE,
+      checkOutSupervisorId: supervisor.id,
+      checkOutSupervisorName: supervisor.name,
+    },
   });
 
   return NextResponse.json({

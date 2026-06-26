@@ -1,5 +1,6 @@
 import type { EmployeeReportData, WeeklyReportData } from "@/lib/report-types";
 import { formatLateDuration } from "@/lib/attendance-utils";
+import { formatAttendanceMethodLabel } from "@/lib/attendance-method";
 import {
   formatLateDetailsForExcel,
   formatLateDetailsForPdf,
@@ -29,7 +30,9 @@ export const EMPLOYEE_REPORT_HEADERS = [
   "اليوم",
   "الحالة",
   "الحضور",
+  "طريقة الحضور",
   "الانصراف",
+  "طريقة الانصراف",
   "التأخير",
 ] as const;
 
@@ -108,7 +111,17 @@ export function buildEmployeeReportRows(
     اليوم: day.dayName,
     الحالة: dayStatusLabels[day.status],
     الحضور: day.checkIn ?? "—",
+    "طريقة الحضور":
+      formatAttendanceMethodLabel({
+        method: day.checkInMethod,
+        supervisorName: day.checkInSupervisorName,
+      }) ?? "—",
     الانصراف: day.checkOut ?? "—",
+    "طريقة الانصراف":
+      formatAttendanceMethodLabel({
+        method: day.checkOutMethod,
+        supervisorName: day.checkOutSupervisorName,
+      }) ?? "—",
     التأخير:
       day.lateMinutes && day.lateMinutes > 0
         ? formatTotalLate(day.lateMinutes, format)

@@ -264,6 +264,10 @@ export async function getEmployeeReport(
       status: true,
       checkIn: true,
       checkOut: true,
+      checkInMethod: true,
+      checkOutMethod: true,
+      checkInSupervisorName: true,
+      checkOutSupervisorName: true,
     },
     orderBy: { date: "asc" },
   });
@@ -296,6 +300,10 @@ export async function getEmployeeReport(
           checkOut: record.checkOut ? formatTimeAr(record.checkOut) : null,
           isWorkingDay: true,
           lateMinutes,
+          checkInMethod: record.checkInMethod,
+          checkOutMethod: record.checkOutMethod,
+          checkInSupervisorName: record.checkInSupervisorName,
+          checkOutSupervisorName: record.checkOutSupervisorName,
         };
       }
 
@@ -307,6 +315,10 @@ export async function getEmployeeReport(
         checkOut: null,
         isWorkingDay: true,
         lateMinutes: null,
+        checkInMethod: null,
+        checkOutMethod: null,
+        checkInSupervisorName: null,
+        checkOutSupervisorName: null,
       };
     }
   );

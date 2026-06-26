@@ -48,7 +48,15 @@ model Attendance {
   checkIn    DateTime?
   checkOut   DateTime?
   status     Status    @default(PRESENT)
-  method     Method    @default(FACE)
+  // طريقة التسجيل لكل حدث على حدة (قد يحضر بالوجه وينصرف بالرمز الطارئ أو العكس).
+  checkInMethod          Method?
+  checkOutMethod         Method?
+  checkInSupervisorId    String?
+  checkInSupervisor      ShiftSupervisor? @relation("CheckInSupervisor", fields: [checkInSupervisorId], references: [id], onDelete: SetNull)
+  checkInSupervisorName  String?
+  checkOutSupervisorId   String?
+  checkOutSupervisor     ShiftSupervisor? @relation("CheckOutSupervisor", fields: [checkOutSupervisorId], references: [id], onDelete: SetNull)
+  checkOutSupervisorName String?
   overtime   Int?
   notes      String?
   createdAt  DateTime  @default(now())
@@ -59,6 +67,24 @@ model Attendance {
   @@index([date, status])
   @@index([date, checkIn(sort: Desc)])
   @@index([date, employeeId])
+  @@index([checkInSupervisorId])
+  @@index([checkOutSupervisorId])
+}
+
+// مسؤولو الشفتات — لكل مسؤول رمز طارئ خاص يعمل على كل الموظفين.
+// يختار المسؤول اسم الموظف ويُدخل رمزه لتسجيل حضور/انصراف ذلك الموظف،
+// ويُحفظ في السجل مَن قام بالتسجيل (للمساءلة في التقارير).
+model ShiftSupervisor {
+  id            String       @id @default(cuid())
+  name          String
+  emergencyCode String       @unique
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  checkInAttendances  Attendance[] @relation("CheckInSupervisor")
+  checkOutAttendances Attendance[] @relation("CheckOutSupervisor")
+
+  @@index([isActive])
 }
 
 model WorkSchedule {

@@ -100,12 +100,12 @@ export async function POST(request: Request) {
       date: today,
       checkIn: now,
       status,
-      method: Method.FACE,
+      checkInMethod: Method.FACE,
     },
     update: {
       checkIn: now,
       status,
-      method: Method.FACE,
+      checkInMethod: Method.FACE,
     },
   });
 

@@ -38,6 +38,13 @@ const SUCCESS_RESET_MS = 3000;
 const BLOCKED_RESET_MS = 5000;
 const EMERGENCY_RESET_MS = 4000;
 
+export type RosterEmployee = {
+  id: string;
+  name: string;
+  employeeCode: string;
+  department: string;
+};
+
 /**
  * كل منطق آلة حالة الكشك (الكاميرا، المسح، التعرف، التسجيل، الرمز الطارئ).
  * المكوّن المرئي يستهلك القيم فقط دون منطق.
@@ -55,6 +62,7 @@ export function useKioskScanner(mode: KioskMode) {
   } = useKioskCamera();
   const {
     loadEmployees,
+    loadRoster,
     getTodayStatus,
     recordAttendance,
     submitEmergency,
@@ -77,6 +85,9 @@ export function useKioskScanner(mode: KioskMode) {
   const [showEmergency, setShowEmergency] = useState(false);
   const [showEnroll, setShowEnroll] = useState(false);
   const [emergencyCode, setEmergencyCode] = useState("");
+  const [emergencyEmployeeId, setEmergencyEmployeeId] = useState("");
+  const [roster, setRoster] = useState<RosterEmployee[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
   const [enrollName, setEnrollName] = useState("");
   const [currentTime, setCurrentTime] = useState("");
   const [scanPhase, setScanPhaseState] = useState<ScanPhase>("idle");
@@ -327,20 +338,28 @@ export function useKioskScanner(mode: KioskMode) {
   ]);
 
   const handleEmergency = useCallback(async () => {
-    if (!emergencyCode) return;
+    if (!emergencyEmployeeId) {
+      toast.error("اختر اسم الموظف أولاً");
+      return;
+    }
+    if (!emergencyCode) {
+      toast.error("أدخل الرمز الطارئ الخاص بمسؤول الشفت");
+      return;
+    }
     setState("processing");
     try {
-      const data = await submitEmergency(emergencyCode);
+      const data = await submitEmergency(emergencyEmployeeId, emergencyCode);
       setResult(data);
       setState("success");
       setShowEmergency(false);
       setEmergencyCode("");
+      setEmergencyEmployeeId("");
       setTimeout(resetScanner, EMERGENCY_RESET_MS);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "رمز غير صحيح");
       setState("scanning");
     }
-  }, [emergencyCode, resetScanner, submitEmergency]);
+  }, [emergencyEmployeeId, emergencyCode, resetScanner, submitEmergency]);
 
   const handleEnroll = useCallback(async () => {
     if (!enrollName.trim() || !videoRef.current) return;
@@ -399,8 +418,25 @@ export function useKioskScanner(mode: KioskMode) {
   }, []);
 
   const toggleEmergency = useCallback(() => {
-    setShowEmergency((prev) => !prev);
-  }, []);
+    setShowEmergency((prev) => {
+      const next = !prev;
+      if (next && roster.length === 0 && !rosterLoading) {
+        setRosterLoading(true);
+        loadRoster()
+          .then(setRoster)
+          .catch((error) => {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "فشل تحميل قائمة الموظفين"
+            );
+          })
+          .finally(() => setRosterLoading(false));
+      }
+      return next;
+    });
+    setShowEnroll(false);
+  }, [roster.length, rosterLoading, loadRoster]);
 
   useEffect(() => {
     updateClock();
@@ -474,6 +510,10 @@ export function useKioskScanner(mode: KioskMode) {
     showEmergency,
     emergencyCode,
     setEmergencyCode,
+    emergencyEmployeeId,
+    setEmergencyEmployeeId,
+    roster,
+    rosterLoading,
     handleEmergency,
     toggleEmergency,
     showEnroll,
