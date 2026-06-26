@@ -4,6 +4,7 @@ import {
   getDescriptorSize,
 } from "@/lib/face-descriptor-version";
 import {
+  getFaceMatchThresholds,
   selectBestFaceMatch,
   type FaceMatchPurpose,
 } from "@/lib/face-match-config";
@@ -80,6 +81,11 @@ export async function findEmployeeByFaceDescriptor(
   };
 }
 
+/**
+ * تحقق مباشر O(1) — يجلب بصمة الموظف المُدّعى فقط ويقارنها بالعتبة.
+ * لا يمسح كل الموظفين (الكشك حدّد الهوية مسبقاً عبر المطابقة المحلية)،
+ * ما يجعل الحضور/الانصراف ثابت التكلفة مهما زاد عدد الموظفين.
+ */
 export async function verifyAttendanceFaceMatch(
   employeeId: string,
   descriptor: number[],
@@ -94,17 +100,26 @@ export async function verifyAttendanceFaceMatch(
       hasFaceRegistered: true,
       faceDescriptorVersion: version,
     },
-    select: { id: true },
+    select: { faceDescriptor: true, faceDescriptorVersion: true },
   });
 
   if (!employee) return false;
+  if (
+    !hasRealFaceDescriptor(
+      employee.faceDescriptor,
+      employee.faceDescriptorVersion
+    )
+  ) {
+    return false;
+  }
+  if (employee.faceDescriptor.length !== getDescriptorSize(version)) return false;
 
-  const match = await findEmployeeByFaceDescriptor(
+  const distance = computeFaceMatchDistance(
+    employee.faceDescriptor,
     descriptor,
-    undefined,
-    "recognize",
     version
   );
+  if (distance === null) return false;
 
-  return match?.id === employeeId;
+  return distance <= getFaceMatchThresholds(version).match;
 }

@@ -9,10 +9,19 @@ import { employeeShiftSelect } from "@/lib/employee-shift";
 import { isValidFaceDescriptor } from "@/lib/face-verify-server";
 import { hasRealFaceDescriptor } from "@/lib/face-descriptor-utils";
 import { verifyAttendanceFaceMatch } from "@/lib/face-match-employee";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;
+
+  const clientIp = getClientIp(request);
+  if (!(await checkRateLimit(`checkin:${clientIp}`, 60, 60_000))) {
+    return NextResponse.json(
+      { error: "محاولات كثيرة — انتظر قليلاً ثم حاول مجدداً" },
+      { status: 429 }
+    );
+  }
 
   let body: { employeeId?: string; descriptor?: number[] };
   try {

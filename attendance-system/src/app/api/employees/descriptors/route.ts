@@ -7,6 +7,7 @@ import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
 import { resolveEmployeeDepartment } from "@/lib/department-resolve";
 import { isValidFaceDescriptor } from "@/lib/face-verify-server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
   const kioskError = await requireKioskAuth(request);
@@ -53,6 +54,14 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;
+
+  const clientIp = getClientIp(request);
+  if (!(await checkRateLimit(`enroll:${clientIp}`, 10, 60_000))) {
+    return NextResponse.json(
+      { error: "محاولات تسجيل كثيرة — انتظر دقيقة ثم حاول مجدداً" },
+      { status: 429 }
+    );
+  }
 
   try {
     let body: { name?: string; descriptor?: number[] };

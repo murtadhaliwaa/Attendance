@@ -100,6 +100,14 @@ model Alert {
   @@index([isRead, createdAt(sort: Desc)])
 }
 
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
 enum Status {
   PRESENT
   ABSENT
