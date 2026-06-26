@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SystemUser } from "@prisma/client";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
@@ -13,7 +14,12 @@ type ResolvedAuth = {
   systemUser: SystemUser | null;
 };
 
-async function loadAuth(): Promise<ResolvedAuth | null> {
+/**
+ * مغلّف بـ React `cache()` لإزالة تكرار العمل خلال نفس الطلب:
+ * الـ layout والصفحة (والـ API) قد تطلب الجلسة عدة مرات، فتُحسب مرة واحدة فقط
+ * لكل طلب — يسرّع كل تنقل بإزالة استدعاء Supabase + Prisma المكرر.
+ */
+const loadAuth = cache(async (): Promise<ResolvedAuth | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,7 +32,7 @@ async function loadAuth(): Promise<ResolvedAuth | null> {
   });
 
   return { user, systemUser };
-}
+});
 
 /** جلسة Supabase + مستخدم النظام النشط */
 export async function resolveSessionAuth(): Promise<SessionAuth | null> {

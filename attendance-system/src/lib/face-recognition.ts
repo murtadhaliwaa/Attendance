@@ -1,5 +1,7 @@
-import { getFaceEngine } from "@/lib/face-engine";
+import { getFaceEngine, wasRecentLivenessRejection } from "@/lib/face-engine";
 import { getDescriptorSize } from "@/lib/face-descriptor-version";
+
+export { wasRecentLivenessRejection };
 import {
   CONSECUTIVE_MATCHES_REQUIRED,
   DUPLICATE_FACE_MATCH_THRESHOLD,

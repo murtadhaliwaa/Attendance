@@ -18,6 +18,17 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // نماذج التعرف على الوجه (~9MB) ثابتة — نخزّنها بقوة ليكون التحميل
+        // البطيء لمرة واحدة فقط، ثم فوري في كل تشغيل لاحق للكشك.
+        source: "/models/human/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
         source: "/sw.js",
         headers: [
           {
@@ -75,6 +86,14 @@ const nextConfig = {
         encoding: false,
       };
     }
+
+    // تحذير غير مؤثر من تبعيات @supabase/ssr في Edge Runtime (process.version).
+    // الكود لدينا لا يستخدمه، لذا نُخفي الضجيج فقط دون تعطيل أي وظيفة.
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      { message: /A Node\.js API is used \(process\.(version|versions)/ },
+    ];
+
     return config;
   },
 };

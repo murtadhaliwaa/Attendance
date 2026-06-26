@@ -1,9 +1,13 @@
 export type KioskMode = "checkin" | "checkout";
 
-export const KIOSK_MODE_LABELS: Record<
-  KioskMode,
-  { title: string; subtitle: string; action: string; scanning: string }
-> = {
+export interface KioskModeLabels {
+  title: string;
+  subtitle: string;
+  action: string;
+  scanning: string;
+}
+
+export const KIOSK_MODE_LABELS: Record<KioskMode, KioskModeLabels> = {
   checkin: {
     title: "الحضور",
     subtitle: "قف أمام الكاميرا لتسجيل حضورك",

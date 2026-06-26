@@ -1,8 +1,18 @@
 const { copyFile, mkdir, stat } = require("fs/promises");
 const path = require("path");
 
-/** نماذج Human المطلوبة للكشف + البصمة 1024-d */
-const HUMAN_MODELS = ["blazeface", "facemesh", "faceres"];
+/**
+ * نماذج Human المطلوبة:
+ * - blazeface / facemesh / faceres: الكشف + البصمة 1024-d
+ * - antispoof / liveness: كشف الحيوية (منع خداع النظام بصورة على هاتف)
+ */
+const HUMAN_MODELS = [
+  "blazeface",
+  "facemesh",
+  "faceres",
+  "antispoof",
+  "liveness",
+];
 
 async function copyModel(srcDir, outDir, name) {
   for (const ext of [".json", ".bin"]) {

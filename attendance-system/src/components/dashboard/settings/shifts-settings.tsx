@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Clock, Loader2, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -57,7 +56,6 @@ interface ShiftsSettingsProps {
 }
 
 export function ShiftsSettings({ initialShifts }: ShiftsSettingsProps) {
-  const router = useRouter();
   const canWrite = usePermission("settings:write");
   const [shifts, setShifts] = useState(initialShifts);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -122,7 +120,6 @@ export function ShiftsSettings({ initialShifts }: ShiftsSettingsProps) {
 
       toast.success(editingId ? "تم تحديث الشفت" : "تم إنشاء الشفت");
       setDialogOpen(false);
-      router.refresh();
 
       const listRes = await fetch("/api/schedules");
       const list = await parseJsonResponse<ShiftRow[]>(listRes);

@@ -82,15 +82,13 @@ export async function getEmployeeDepartmentLists(): Promise<{
 }> {
   await ensureDefaultDepartments();
 
-  const [departments, employeesWithDept, orphanDepartments] = await Promise.all([
+  // ملاحظة: أسماء الأقسام المرتبطة (departmentRef.name) هي حتماً مجموعة
+  // جزئية من أسماء جدول Department، لذا لا حاجة لاستعلام distinct+join منفصل.
+  // نكتفي بكل أسماء الأقسام + الأقسام النصية اليتيمة (departmentId = null).
+  const [departments, orphanDepartments] = await Promise.all([
     prisma.department.findMany({
       select: { name: true },
       orderBy: { name: "asc" },
-    }),
-    prisma.employee.findMany({
-      where: { departmentId: { not: null } },
-      select: { departmentRef: { select: { name: true } } },
-      distinct: ["departmentId"],
     }),
     prisma.employee.groupBy({
       by: ["department"],
@@ -99,14 +97,10 @@ export async function getEmployeeDepartmentLists(): Promise<{
   ]);
 
   const formOptions = departments.map((department) => department.name);
-  const linkedNames = employeesWithDept
-    .map((row) => row.departmentRef?.name)
-    .filter((name): name is string => !!name);
 
   const filters = Array.from(
     new Set([
       ...formOptions,
-      ...linkedNames,
       ...orphanDepartments.map((group) => group.department),
     ])
   )

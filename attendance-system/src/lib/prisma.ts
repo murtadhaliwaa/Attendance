@@ -14,9 +14,13 @@ function createPool() {
     throw new Error("DATABASE_URL is not set");
   }
 
+  // حجم تجمّع الاتصالات لكل نسخة دالة (serverless). القيمة الافتراضية 5
+  // مناسبة لـ Supabase pooler؛ يمكن ضبطها عبر DB_POOL_MAX حسب الخطة.
+  const poolMax = Number(process.env.DB_POOL_MAX) || 5;
+
   return new Pool({
     connectionString,
-    max: 3,
+    max: poolMax,
     connectionTimeoutMillis: 30000,
     idleTimeoutMillis: 60000,
     ssl: connectionString.includes("supabase.com")

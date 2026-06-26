@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
@@ -88,6 +88,14 @@ export function EmployeesManager({
   const canUpdate = usePermission("employees:update");
   const canDelete = usePermission("employees:delete");
   const showActions = canUpdate || canDelete;
+
+  // نسخة محلية تُحدَّث فوراً بعد العمليات السريعة (إيقاف/تفعيل/مسح وجه/حذف)
+  // دون إعادة جلب الصفحة كاملة. تُزامَن مع بيانات الخادم بعد الإضافة/التعديل.
+  const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
+  useEffect(() => {
+    setEmployees(initialEmployees);
+  }, [initialEmployees]);
+
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("active");
@@ -104,25 +112,23 @@ export function EmployeesManager({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const stats = useMemo(() => {
-    const active = initialEmployees.filter((e) => e.isActive).length;
-    const withFace = initialEmployees.filter(
-      (e) => e.isActive && e.hasFace
-    ).length;
-    const withoutFace = initialEmployees.filter(
+    const active = employees.filter((e) => e.isActive).length;
+    const withFace = employees.filter((e) => e.isActive && e.hasFace).length;
+    const withoutFace = employees.filter(
       (e) => e.isActive && !e.hasFace
     ).length;
     return {
-      total: initialEmployees.length,
+      total: employees.length,
       active,
       withFace,
       withoutFace,
     };
-  }, [initialEmployees]);
+  }, [employees]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return initialEmployees.filter((employee) => {
+    return employees.filter((employee) => {
       if (status === "active" && !employee.isActive) return false;
       if (status === "inactive" && employee.isActive) return false;
       if (department !== "all" && employee.department !== department) return false;
@@ -136,7 +142,7 @@ export function EmployeesManager({
         employee.department.toLowerCase().includes(query)
       );
     });
-  }, [initialEmployees, search, department, status]);
+  }, [employees, search, department, status]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -147,6 +153,16 @@ export function EmployeesManager({
 
   function refresh() {
     router.refresh();
+  }
+
+  function patchEmployee(id: string, changes: Partial<EmployeeRow>) {
+    setEmployees((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...changes } : e))
+    );
+  }
+
+  function removeEmployee(id: string) {
+    setEmployees((prev) => prev.filter((e) => e.id !== id));
   }
 
   function openCreate() {
@@ -160,36 +176,36 @@ export function EmployeesManager({
   }
 
   async function runAction(
-    id: string,
     action: () => Promise<void>,
     loadingKey: string
   ) {
     setActionLoading(loadingKey);
     try {
       await action();
-      refresh();
     } finally {
       setActionLoading(null);
     }
   }
 
   async function toggleActive(employee: EmployeeRow) {
-    await runAction(employee.id, async () => {
+    await runAction(async () => {
+      const nextActive = !employee.isActive;
       const res = await fetch(`/api/employees/${employee.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !employee.isActive }),
+        body: JSON.stringify({ isActive: nextActive }),
       });
       const data = await parseJsonResponse<{ message?: string; error?: string }>(
         res
       );
       if (!res.ok) throw new Error(data.error ?? "فشل تحديث الحالة");
+      patchEmployee(employee.id, { isActive: nextActive });
       toast.success(data.message);
     }, `toggle-${employee.id}`);
   }
 
   async function clearFace(employee: EmployeeRow) {
-    await runAction(employee.id, async () => {
+    await runAction(async () => {
       const res = await fetch(`/api/employees/${employee.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -199,13 +215,17 @@ export function EmployeesManager({
         res
       );
       if (!res.ok) throw new Error(data.error ?? "فشل مسح بصمة الوجه");
+      patchEmployee(employee.id, {
+        hasFace: false,
+        needsFaceReEnrollment: false,
+      });
       toast.success(`تم مسح بصمة وجه ${employee.name}. سجّل الوجه من صفحة الحضور والانصراف`);
       setClearFaceTarget(null);
     }, `face-${employee.id}`);
   }
 
   async function deactivateEmployee(employee: EmployeeRow) {
-    await runAction(employee.id, async () => {
+    await runAction(async () => {
       const res = await fetch(`/api/employees/${employee.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -215,13 +235,14 @@ export function EmployeesManager({
         res
       );
       if (!res.ok) throw new Error(data.error ?? "فشل إيقاف الموظف");
+      patchEmployee(employee.id, { isActive: false });
       toast.success(data.message ?? `تم إيقاف ${employee.name}`);
       setDeactivateTarget(null);
     }, `deactivate-${employee.id}`);
   }
 
   async function deleteEmployee(employee: EmployeeRow) {
-    await runAction(employee.id, async () => {
+    await runAction(async () => {
       const res = await fetch(`/api/employees/${employee.id}`, {
         method: "DELETE",
       });
@@ -229,6 +250,7 @@ export function EmployeesManager({
         res
       );
       if (!res.ok) throw new Error(data.error ?? "فشل حذف الموظف");
+      removeEmployee(employee.id);
       toast.success(data.message);
       setDeleteTarget(null);
     }, `delete-${employee.id}`);
@@ -480,7 +502,7 @@ export function EmployeesManager({
         open={formOpen}
         onOpenChange={setFormOpen}
         employee={editingEmployee}
-        employees={initialEmployees}
+        employees={employees}
         shifts={shifts}
         departments={departmentOptions}
         positions={positionOptions}

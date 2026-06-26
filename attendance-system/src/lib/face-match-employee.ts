@@ -4,7 +4,6 @@ import {
   getDescriptorSize,
 } from "@/lib/face-descriptor-version";
 import {
-  getFaceMatchThresholds,
   selectBestFaceMatch,
   type FaceMatchPurpose,
 } from "@/lib/face-match-config";
@@ -82,9 +81,16 @@ export async function findEmployeeByFaceDescriptor(
 }
 
 /**
- * تحقق مباشر O(1) — يجلب بصمة الموظف المُدّعى فقط ويقارنها بالعتبة.
- * لا يمسح كل الموظفين (الكشك حدّد الهوية مسبقاً عبر المطابقة المحلية)،
- * ما يجعل الحضور/الانصراف ثابت التكلفة مهما زاد عدد الموظفين.
+ * تحقق دفاعي صارم 1:N على الخادم قبل تسجيل الحضور/الانصراف.
+ *
+ * لا يكتفي بسؤال «هل يطابق الموظف المُدّعى؟» (الذي قد يقبل موظفاً مشابهاً)،
+ * بل يتأكد أن الموظف المُدّعى هو **أقرب تطابق غير ملتبس** بين كل الموظفين
+ * النشطين — أي يطبّق حارس الفجوة (minGap) نفسه الموجود في الكشك.
+ *
+ * هذا يمنع: لو أخطأ الكشك في الهوية لموظف مشابه، يرفضه الخادم.
+ *
+ * الأداء: O(n) لكنه سريع لأعداد متوسطة (≈150 موظف = استعلام واحد + 150 عملية
+ * مسافة لا تتجاوز أجزاء من الملّي ثانية). مقايضة مقصودة لصالح الدقة.
  */
 export async function verifyAttendanceFaceMatch(
   employeeId: string,
@@ -93,33 +99,46 @@ export async function verifyAttendanceFaceMatch(
 ): Promise<boolean> {
   if (!isValidFaceDescriptor(descriptor, version)) return false;
 
-  const employee = await prisma.employee.findFirst({
+  const expectedSize = getDescriptorSize(version);
+
+  const employees = await prisma.employee.findMany({
     where: {
-      id: employeeId,
       isActive: true,
       hasFaceRegistered: true,
       faceDescriptorVersion: version,
     },
-    select: { faceDescriptor: true, faceDescriptorVersion: true },
+    select: { id: true, faceDescriptor: true, faceDescriptorVersion: true },
   });
 
-  if (!employee) return false;
-  if (
-    !hasRealFaceDescriptor(
+  const candidates: Array<{ id: string; distance: number }> = [];
+  let claimedExists = false;
+
+  for (const employee of employees) {
+    if (employee.id === employeeId) claimedExists = true;
+
+    if (
+      !hasRealFaceDescriptor(
+        employee.faceDescriptor,
+        employee.faceDescriptorVersion
+      )
+    ) {
+      continue;
+    }
+    if (employee.faceDescriptor.length !== expectedSize) continue;
+
+    const distance = computeFaceMatchDistance(
       employee.faceDescriptor,
-      employee.faceDescriptorVersion
-    )
-  ) {
-    return false;
+      descriptor,
+      version
+    );
+    if (distance === null) continue;
+
+    candidates.push({ id: employee.id, distance });
   }
-  if (employee.faceDescriptor.length !== getDescriptorSize(version)) return false;
 
-  const distance = computeFaceMatchDistance(
-    employee.faceDescriptor,
-    descriptor,
-    version
-  );
-  if (distance === null) return false;
+  // الموظف المُدّعى يجب أن يكون نشطاً ومسجّلاً أصلاً.
+  if (!claimedExists) return false;
 
-  return distance <= getFaceMatchThresholds(version).match;
+  const best = selectBestFaceMatch(candidates, "recognize", version);
+  return best?.id === employeeId;
 }

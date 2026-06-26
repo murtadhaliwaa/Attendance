@@ -45,7 +45,12 @@ export type ScanPhase = "idle" | "detecting" | "matching" | "unknown";
 export const UNKNOWN_FACE_MESSAGE =
   "ربما أنك موظف جديد وغير مسجّل، أو أن النظام لم يتعرف عليك — حاول مجدداً، أو سجّل عبر «موظف جديد».";
 
+export const SPOOF_FACE_MESSAGE =
+  "يبدو أنك تستخدم صورة أو شاشة. قف بوجهك الحقيقي أمام الكاميرا لتسجيل الحضور.";
+
 export const UNKNOWN_FACE_HOLD_MS = 5000;
+
+export const SPOOF_FACE_HOLD_MS = 4000;
 
 export function getBlockReason(
   mode: KioskMode,

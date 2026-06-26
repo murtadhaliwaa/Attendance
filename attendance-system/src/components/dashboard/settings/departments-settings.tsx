@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Building2, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,7 +34,6 @@ interface DepartmentsSettingsProps {
 export function DepartmentsSettings({
   initialDepartments,
 }: DepartmentsSettingsProps) {
-  const router = useRouter();
   const canWrite = usePermission("settings:write");
   const [departments, setDepartments] =
     useState<DepartmentRow[]>(initialDepartments);
@@ -96,7 +94,6 @@ export function DepartmentsSettings({
 
       toast.success(editingId ? "تم تحديث القسم" : "تم إضافة القسم");
       setDialogOpen(false);
-      router.refresh();
       await refreshList();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "فشل حفظ القسم");
@@ -119,7 +116,6 @@ export function DepartmentsSettings({
 
       toast.success(data.message ?? "تم حذف القسم");
       setDeleteTarget(null);
-      router.refresh();
       await refreshList();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "فشل حذف القسم");

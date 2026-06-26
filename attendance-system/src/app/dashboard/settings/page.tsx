@@ -21,16 +21,21 @@ const shiftQuery = {
   include: { _count: { select: { employees: true } } },
 };
 
-async function loadSettingsData() {
-  let shifts = await prisma.workSchedule.findMany(shiftQuery);
+async function loadShiftsWithDefaults() {
+  const shifts = await prisma.workSchedule.findMany(shiftQuery);
   const mutated = await ensureDefaultShifts(shifts);
-
   if (mutated) {
-    shifts = await prisma.workSchedule.findMany(shiftQuery);
+    return prisma.workSchedule.findMany(shiftQuery);
   }
+  return shifts;
+}
 
-  const users = await prisma.systemUser.findMany({ orderBy: { name: "asc" } });
-  const departments = await getDepartmentRows();
+async function loadSettingsData() {
+  const [shifts, users, departments] = await Promise.all([
+    loadShiftsWithDefaults(),
+    prisma.systemUser.findMany({ orderBy: { name: "asc" } }),
+    getDepartmentRows(),
+  ]);
 
   return { shifts, users, departments };
 }

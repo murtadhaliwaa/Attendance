@@ -17,8 +17,11 @@
     "auth:create-sql": "npx tsx scripts/create-auth-users-sql.ts",
     "db:backfill-faces": "npx tsx scripts/backfill-face-flags.ts",
     "db:backfill-face-versions": "npx tsx scripts/backfill-face-descriptor-version.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:face-v2": "npx tsx scripts/test-face-v2.ts",
     "test:rate-limit": "npx tsx scripts/test-rate-limit.ts",
+    "face:calibrate": "npx tsx scripts/calibrate-face-threshold.ts",
     "db:backfill-departments": "npx tsx scripts/backfill-department-ids.ts",
     "env:validate": "npx tsx scripts/validate-env.ts"
   },
@@ -62,6 +65,7 @@
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.22.4",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.9"
   }
 }
