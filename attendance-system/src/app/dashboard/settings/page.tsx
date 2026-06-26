@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { DepartmentsSettings } from "@/components/dashboard/settings/departments-settings";
 import { ShiftsSettings } from "@/components/dashboard/settings/shifts-settings";
+import { FaceCalibrationSection } from "@/components/dashboard/settings/face-calibration-section";
 import { getDepartmentRows } from "@/lib/departments";
 import { ensureDefaultShifts } from "@/lib/shifts";
 import { requirePagePermission } from "@/lib/page-auth";
@@ -59,6 +60,7 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-5xl space-y-4">
       <ShiftsSettings initialShifts={shiftRows} />
       <DepartmentsSettings initialDepartments={departments} />
+      <FaceCalibrationSection />
 
       <Card className="border border-bg-border bg-bg-card">
         <CardHeader className="pb-3">
