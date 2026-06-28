@@ -10,6 +10,14 @@ import {
 } from "@/lib/face-recognition";
 import { dashboardFetch } from "@/lib/api-utils";
 import { createClient } from "@/lib/supabase/client";
+import {
+  buildCameraVideoConstraints,
+  getCameraMirrorClass,
+  getKioskCameraFacing,
+  KIOSK_CAMERA_FACING_CHANGED_EVENT,
+} from "@/lib/kiosk-camera-preference";
+import { CameraFacingSelector } from "@/components/kiosk/camera-facing-selector";
+import { useKioskCameraPreference } from "@/hooks/use-kiosk-camera-preference";
 import { cn } from "@/lib/utils";
 
 interface FaceEnrollmentPanelProps {
@@ -50,6 +58,7 @@ export function FaceEnrollmentPanel({
   const [pendingDescriptor, setPendingDescriptor] = useState<number[] | null>(
     null
   );
+  const { facingMode } = useKioskCameraPreference();
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -68,11 +77,7 @@ export function FaceEnrollmentPanel({
     stopCamera();
 
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "user",
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
+      video: buildCameraVideoConstraints(getKioskCameraFacing()),
       audio: false,
     });
 
@@ -130,6 +135,25 @@ export function FaceEnrollmentPanel({
       stopCamera();
     };
   }, [active, showCamera, startCamera, stopCamera]);
+
+  useEffect(() => {
+    if (!active || !showCamera) return;
+
+    const onFacingChanged = () => {
+      void startCamera().catch((error) => {
+        setCameraError(
+          error instanceof Error ? error.message : "فشل تشغيل الكاميرا"
+        );
+      });
+    };
+
+    window.addEventListener(KIOSK_CAMERA_FACING_CHANGED_EVENT, onFacingChanged);
+    return () =>
+      window.removeEventListener(
+        KIOSK_CAMERA_FACING_CHANGED_EVENT,
+        onFacingChanged
+      );
+  }, [active, showCamera, startCamera]);
 
   useEffect(() => {
     if (!active) {
@@ -342,13 +366,17 @@ export function FaceEnrollmentPanel({
 
       {showCamera && (
         <div className="space-y-2">
+          <CameraFacingSelector compact className="max-w-xs" />
           <div
             dir="ltr"
             className="relative aspect-[4/3] overflow-hidden rounded-xl border border-bg-border bg-black"
           >
             <video
               ref={videoRef}
-              className="size-full object-cover [transform:scaleX(-1)]"
+              className={cn(
+                "size-full object-cover",
+                getCameraMirrorClass(facingMode)
+              )}
               autoPlay
               playsInline
               muted

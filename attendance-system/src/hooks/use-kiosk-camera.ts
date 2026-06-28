@@ -1,11 +1,21 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  buildCameraVideoConstraints,
+  getKioskCameraFacing,
+  KIOSK_CAMERA_FACING_CHANGED_EVENT,
+  type CameraFacingMode,
+} from "@/lib/kiosk-camera-preference";
 
 export function useKioskCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [facingMode, setFacingMode] = useState<CameraFacingMode>(() =>
+    typeof window !== "undefined" ? getKioskCameraFacing() : "user"
+  );
+  const startCameraRef = useRef<(() => Promise<void>) | null>(null);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -77,13 +87,10 @@ export function useKioskCamera() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: buildCameraVideoConstraints(getKioskCameraFacing()),
         audio: false,
       });
+      setFacingMode(getKioskCameraFacing());
       await attachStreamToVideo(stream);
     } catch (error) {
       if (error instanceof Error && error.message.includes("تعذر")) {
@@ -109,10 +116,29 @@ export function useKioskCamera() {
     }
   }, [attachStreamToVideo, stopCamera]);
 
+  startCameraRef.current = startCamera;
+
+  useEffect(() => {
+    const onFacingChanged = () => {
+      setFacingMode(getKioskCameraFacing());
+      if (streamRef.current) {
+        void startCameraRef.current?.();
+      }
+    };
+
+    window.addEventListener(KIOSK_CAMERA_FACING_CHANGED_EVENT, onFacingChanged);
+    return () =>
+      window.removeEventListener(
+        KIOSK_CAMERA_FACING_CHANGED_EVENT,
+        onFacingChanged
+      );
+  }, []);
+
   return {
     videoRef,
     streamRef,
     cameraReady,
+    facingMode,
     setCameraReady,
     stopCamera,
     startCamera,

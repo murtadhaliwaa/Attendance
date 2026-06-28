@@ -9,6 +9,11 @@ import {
   type KioskState,
   type ScanPhase,
 } from "@/lib/kiosk-scanner-types";
+import {
+  getCameraMirrorClass,
+  type CameraFacingMode,
+} from "@/lib/kiosk-camera-preference";
+import { cn } from "@/lib/utils";
 
 interface KioskCameraViewProps {
   videoRef: RefObject<HTMLVideoElement>;
@@ -17,6 +22,7 @@ interface KioskCameraViewProps {
   cameraReady: boolean;
   verifyProgress: number;
   accentRing: string;
+  facingMode: CameraFacingMode;
   onRetryCamera: () => void;
 }
 
@@ -27,6 +33,7 @@ export function KioskCameraView({
   cameraReady,
   verifyProgress,
   accentRing,
+  facingMode,
   onRetryCamera,
 }: KioskCameraViewProps) {
   const isScanningLike = state === "scanning" || state === "verifying";
@@ -39,7 +46,7 @@ export function KioskCameraView({
       >
         <video
           ref={videoRef}
-          className="size-full object-cover [transform:scaleX(-1)]"
+          className={cn("size-full object-cover", getCameraMirrorClass(facingMode))}
           autoPlay
           playsInline
           muted

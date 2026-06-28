@@ -11,6 +11,7 @@ import {
   Moon,
   Maximize2,
   AlertCircle,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useKioskTabletMode } from "@/hooks/use-kiosk-tablet-mode";
+import { CameraFacingSelector } from "@/components/kiosk/camera-facing-selector";
+import { useKioskCameraPreference } from "@/hooks/use-kiosk-camera-preference";
+import { getCameraFacingLabel } from "@/lib/kiosk-camera-preference";
 import { cn } from "@/lib/utils";
 
 export function KioskTabletSetup() {
@@ -36,6 +40,7 @@ export function KioskTabletSetup() {
     toggleFullscreen,
     toggleWakeLock,
   } = useKioskTabletMode();
+  const { facingMode } = useKioskCameraPreference();
   const [activating, setActivating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -95,6 +100,30 @@ export function KioskTabletSetup() {
           <p>2. من القائمة: «إضافة إلى الشاشة الرئيسية»</p>
           <p>3. اضغط «تفعيل وضع الكشك» أدناه</p>
           <p>4. افتح التطبيق من الشاشة الرئيسية → الحضور أو الانصراف</p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-bg-border bg-bg-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Camera className="size-4" />
+            الكاميرا
+          </CardTitle>
+          <CardDescription>
+            اختر الأمامية أو الخلفية حسب طريقة تثبيت التابلت
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <CameraFacingSelector />
+          <p className="rounded-lg border border-blue-500/25 bg-blue-500/10 px-3 py-2 text-xs text-blue-100">
+            بعد تغيير الكاميرا، أعد تسجيل بصمات الوجوه من نفس الجهاز والكاميرا
+            المختارة.
+          </p>
+          <StatusRow
+            ok
+            label="الاختيار الحالي"
+            detail={getCameraFacingLabel(facingMode)}
+          />
         </CardContent>
       </Card>
 

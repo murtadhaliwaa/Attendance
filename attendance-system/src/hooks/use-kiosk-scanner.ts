@@ -56,6 +56,7 @@ export function useKioskScanner(mode: KioskMode) {
   const {
     videoRef,
     cameraReady,
+    facingMode,
     setCameraReady,
     stopCamera: releaseCamera,
     startCamera,
@@ -500,6 +501,7 @@ export function useKioskScanner(mode: KioskMode) {
     labels,
     videoRef,
     cameraReady,
+    facingMode,
     state,
     statusText,
     verifyProgress,

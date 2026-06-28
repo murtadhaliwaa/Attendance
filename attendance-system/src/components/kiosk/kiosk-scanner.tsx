@@ -32,6 +32,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     labels,
     videoRef,
     cameraReady,
+    facingMode,
     state,
     statusText,
     verifyProgress,
@@ -155,6 +156,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 cameraReady={cameraReady}
                 verifyProgress={verifyProgress}
                 accentRing={accentRing}
+                facingMode={facingMode}
                 onRetryCamera={retryCamera}
               />
 

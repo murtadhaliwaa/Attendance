@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Camera, KeyRound, Search, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CameraFacingSelector } from "@/components/kiosk/camera-facing-selector";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -65,6 +66,7 @@ export function KioskScannerControls({
   }, [roster, employeeSearch]);
   return (
     <>
+      <CameraFacingSelector compact className="mx-auto max-w-xs shrink-0" />
       <div className="flex shrink-0 flex-wrap justify-center gap-2">
         <Button
           variant="outline"

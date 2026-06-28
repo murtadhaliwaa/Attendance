@@ -13,6 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { parseJsonResponse } from "@/lib/api-utils";
+import { CameraFacingSelector } from "@/components/kiosk/camera-facing-selector";
+import { useKioskCameraPreference } from "@/hooks/use-kiosk-camera-preference";
+import { getCameraMirrorClass } from "@/lib/kiosk-camera-preference";
 import { useKioskCamera } from "@/hooks/use-kiosk-camera";
 import {
   averageDescriptors,
@@ -52,6 +55,7 @@ const CAPTURE_RETRIES = 20;
 export function FaceCalibrationTool() {
   const employeesRef = useRef<CalibrationEmployee[]>([]);
   const { videoRef, cameraReady, startCamera, stopCamera } = useKioskCamera();
+  const { facingMode } = useKioskCameraPreference();
 
   const [sessionActive, setSessionActive] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -215,13 +219,14 @@ export function FaceCalibrationTool() {
             <p className="text-xs text-text-muted">
               تم تحميل {loadedCount} موظفاً للمقارنة.
             </p>
+            <CameraFacingSelector compact className="max-w-xs" />
             <div className="relative mx-auto aspect-[4/3] w-full max-w-sm overflow-hidden rounded-xl border border-bg-border bg-black">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className="size-full object-cover [transform:scaleX(-1)]"
+                className={`size-full object-cover ${getCameraMirrorClass(facingMode)}`}
               />
               {!cameraReady && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80">
