@@ -4,11 +4,10 @@ import {
   ENROLLMENT_MIN_CONFIDENCE,
   ENROLLMENT_MIN_FACE_SIZE_RATIO,
   LIVENESS_ENABLED,
-  LIVENESS_MIN_LIVE,
-  LIVENESS_MIN_REAL,
   SCAN_MIN_CONFIDENCE,
   SCAN_MIN_FACE_SIZE_RATIO,
 } from "@/lib/face-match-config";
+import { passesLiveness } from "@/lib/face-liveness";
 import {
   CURRENT_FACE_DESCRIPTOR_VERSION,
   FACE_DESCRIPTOR_V2_SIZE,
@@ -32,29 +31,20 @@ export function wasRecentLivenessRejection(withinMs = 1500): boolean {
   return Date.now() - lastLivenessRejectionAt <= withinMs;
 }
 
-/**
- * يتحقق من كون الوجه حيّاً حقيقياً (ليس صورة على هاتف/ورقة).
- * يعتمد على نموذجي antispoof و liveness من Human.
- *
- * fail-closed بعد تحميل النماذج: إذا كانت النماذج محمّلة والكشف مفعّل لكن
- * لم تُرجِع أي درجة (real/live) فهذا وضع غير متوقّع ومريب → نرفض بدل السماح.
- * قبل اكتمال التحميل فقط نتساهل (لا كشف فعلي حينها على أي حال).
- */
-function passesLiveness(face: { real?: number; live?: number }): boolean {
-  if (!LIVENESS_ENABLED) return true;
+let lastMotionRejectionAt = 0;
 
-  const hasReal = typeof face.real === "number";
-  const hasLive = typeof face.live === "number";
-
-  if (modelsLoaded && !hasReal && !hasLive) {
-    return false;
-  }
-
-  if (hasReal && face.real! < LIVENESS_MIN_REAL) return false;
-  if (hasLive && face.live! < LIVENESS_MIN_LIVE) return false;
-  return true;
+export function wasRecentMotionRejection(withinMs = 1500): boolean {
+  return Date.now() - lastMotionRejectionAt <= withinMs;
 }
 
+export function markMotionRejection(): void {
+  lastMotionRejectionAt = Date.now();
+  lastLivenessRejectionAt = Date.now();
+}
+
+/**
+ * @see passesLiveness في face-liveness.ts
+ */
 async function getHuman(): Promise<Human> {
   if (typeof window === "undefined") {
     throw new Error("Human يعمل في المتصفح فقط");
@@ -127,7 +117,7 @@ async function detectEmbedding(
     return null;
   }
 
-  if (!passesLiveness(face)) {
+  if (!passesLiveness(face, mode, modelsLoaded)) {
     lastLivenessRejectionAt = Date.now();
     return null;
   }
@@ -147,6 +137,14 @@ async function detectEmbedding(
     descriptor: new Float32Array(face.embedding),
     score,
     faceSizeRatio,
+    faceBox: {
+      x: box[0],
+      y: box[1],
+      width: box[2],
+      height: box[3],
+    },
+    frameWidth: frame.frameWidth,
+    frameHeight: frame.frameHeight,
   };
 }
 

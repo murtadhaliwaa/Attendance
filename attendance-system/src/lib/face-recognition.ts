@@ -1,7 +1,7 @@
-import { getFaceEngine, wasRecentLivenessRejection } from "@/lib/face-engine";
+import { getFaceEngine, wasRecentLivenessRejection, wasRecentMotionRejection } from "@/lib/face-engine";
 import { getDescriptorSize } from "@/lib/face-descriptor-version";
 
-export { wasRecentLivenessRejection };
+export { wasRecentLivenessRejection, wasRecentMotionRejection };
 import {
   CONSECUTIVE_MATCHES_REQUIRED,
   DUPLICATE_FACE_MATCH_THRESHOLD,
@@ -56,6 +56,9 @@ export interface FaceDetectionResult {
   descriptor: Float32Array;
   score: number;
   faceSizeRatio: number;
+  faceBox: { x: number; y: number; width: number; height: number };
+  frameWidth: number;
+  frameHeight: number;
 }
 
 export async function loadScanFaceModels(): Promise<void> {

@@ -15,6 +15,9 @@ export function formatAttendanceMethodLabel(
       ? `رمز طارئ · ${info.supervisorName}`
       : "رمز طارئ";
   }
+  if (info.method === "MANUAL") {
+    return "تسجيل يدوي";
+  }
   return "بصمة الوجه";
 }
 

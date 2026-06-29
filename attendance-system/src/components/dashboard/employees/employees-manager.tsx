@@ -13,6 +13,9 @@ import {
   RotateCcw,
   UserMinus,
   Trash2,
+  LogIn,
+  LogOut,
+  Eraser,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -64,6 +67,34 @@ const EmployeeFormDialog = dynamic(
 
 const PAGE_SIZE = 15;
 
+type AttendanceAction = "checkin" | "checkout" | "clear_checkin" | "clear_checkout";
+
+const ATTENDANCE_ACTION_LABELS: Record<
+  AttendanceAction,
+  { title: string; description: string; confirm: string }
+> = {
+  checkin: {
+    title: "تسجيل حضور يدوي",
+    description: "سجّل حضور الموظف لهذا اليوم من لوحة التحكم (بدون كاميرا).",
+    confirm: "تسجيل الحضور",
+  },
+  checkout: {
+    title: "تسجيل انصراف يدوي",
+    description: "سجّل انصراف الموظف لهذا اليوم من لوحة التحكم (بدون كاميرا).",
+    confirm: "تسجيل الانصراف",
+  },
+  clear_checkin: {
+    title: "مسح حضور اليوم",
+    description: "يحذف سجل حضور الموظف لهذا اليوم. لا يمكن المسح إذا كان الانصراف مسجّلاً.",
+    confirm: "مسح الحضور",
+  },
+  clear_checkout: {
+    title: "مسح انصراف اليوم",
+    description: "يحذف سجل انصراف الموظف لهذا اليوم ويبقي الحضور كما هو.",
+    confirm: "مسح الانصراف",
+  },
+};
+
 interface EmployeesManagerProps {
   initialEmployees: EmployeeRow[];
   shifts: ShiftOption[];
@@ -109,6 +140,10 @@ export function EmployeesManager({
   const [clearFaceTarget, setClearFaceTarget] = useState<EmployeeRow | null>(
     null
   );
+  const [attendanceTarget, setAttendanceTarget] = useState<{
+    employee: EmployeeRow;
+    action: AttendanceAction;
+  } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const stats = useMemo(() => {
@@ -254,6 +289,26 @@ export function EmployeesManager({
       toast.success(data.message);
       setDeleteTarget(null);
     }, `delete-${employee.id}`);
+  }
+
+  async function runAttendanceAction(
+    employee: EmployeeRow,
+    action: AttendanceAction
+  ) {
+    await runAction(async () => {
+      const res = await fetch(`/api/employees/${employee.id}/attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await parseJsonResponse<{ message?: string; error?: string }>(
+        res
+      );
+      if (!res.ok) throw new Error(data.error ?? "فشل تنفيذ العملية");
+      toast.success(data.message ?? "تمت العملية");
+      setAttendanceTarget(null);
+      refresh();
+    }, `attendance-${action}-${employee.id}`);
   }
 
   return (
@@ -438,6 +493,55 @@ export function EmployeesManager({
                                     مسح بصمة الوجه
                                   </DropdownMenuItem>
                                 )}
+                                {employee.isActive && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setAttendanceTarget({
+                                          employee,
+                                          action: "checkin",
+                                        })
+                                      }
+                                    >
+                                      <LogIn />
+                                      تسجيل حضور يدوي
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setAttendanceTarget({
+                                          employee,
+                                          action: "checkout",
+                                        })
+                                      }
+                                    >
+                                      <LogOut />
+                                      تسجيل انصراف يدوي
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setAttendanceTarget({
+                                          employee,
+                                          action: "clear_checkin",
+                                        })
+                                      }
+                                    >
+                                      <Eraser />
+                                      مسح حضور اليوم
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setAttendanceTarget({
+                                          employee,
+                                          action: "clear_checkout",
+                                        })
+                                      }
+                                    >
+                                      <Eraser />
+                                      مسح انصراف اليوم
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 <DropdownMenuSeparator />
                                 {employee.isActive && (
                                   <DropdownMenuItem
@@ -510,6 +614,55 @@ export function EmployeesManager({
         suggestedEmergencyCode={suggestedEmergencyCode}
         onSuccess={refresh}
       />
+
+      <Dialog
+        open={!!attendanceTarget}
+        onOpenChange={(open) => !open && setAttendanceTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          {attendanceTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {ATTENDANCE_ACTION_LABELS[attendanceTarget.action].title}
+                </DialogTitle>
+                <DialogDescription>
+                  {ATTENDANCE_ACTION_LABELS[attendanceTarget.action].description}
+                  <span className="mt-2 block font-medium text-text-primary">
+                    {attendanceTarget.employee.name} (
+                    {attendanceTarget.employee.employeeCode})
+                  </span>
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mx-0 mb-0 shrink-0 flex-row justify-end gap-2 border-t-0 bg-transparent p-0 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setAttendanceTarget(null)}
+                  disabled={!!actionLoading}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  variant={
+                    attendanceTarget.action.startsWith("clear")
+                      ? "destructive"
+                      : "default"
+                  }
+                  disabled={!!actionLoading}
+                  onClick={() =>
+                    void runAttendanceAction(
+                      attendanceTarget.employee,
+                      attendanceTarget.action
+                    )
+                  }
+                >
+                  {ATTENDANCE_ACTION_LABELS[attendanceTarget.action].confirm}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!clearFaceTarget}

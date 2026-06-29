@@ -149,6 +149,7 @@ enum Status {
 enum Method {
   FACE
   EMERGENCY_CODE
+  MANUAL
 }
 
 enum Role {

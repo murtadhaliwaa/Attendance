@@ -80,11 +80,22 @@ export const SCAN_MIN_FACE_SIZE_RATIO = 0.08;
  * كشف الحيوية (Liveness / Anti-spoofing) — لمنع خداع النظام بصورة على هاتف أو ورقة.
  * - real: ثقة نموذج antispoof أن الوجه حقيقي (ليس صورة مطبوعة/شاشة)
  * - live: ثقة نموذج liveness أن الوجه حي (وليس صورة ثابتة)
- * القيم بين 0 و 1، والأعلى أكثر ثقة. مفعّل أثناء المسح والتسجيل.
+ * القيم بين 0 و 1. يجب اجتياز real و live معاً بعد تحميل النماذج.
  */
 export const LIVENESS_ENABLED = true;
-export const LIVENESS_MIN_REAL = 0.5;
-export const LIVENESS_MIN_LIVE = 0.5;
+export const LIVENESS_MIN_REAL = 0.65;
+export const LIVENESS_MIN_LIVE = 0.65;
+/** عتبات أصرم أثناء مسح الحضور/الانصراف */
+export const LIVENESS_SCAN_MIN_REAL = 0.72;
+export const LIVENESS_SCAN_MIN_LIVE = 0.72;
+
+/** حركة الوجه — الصور الثابتة على الشاشة تتحرك أقل */
+export const MOTION_HISTORY_SIZE = 8;
+export const MOTION_MIN_STD = 0.0018;
+
+/** بصمات متطابقة جداً عبر إطارات متتالية = صورة ثابتة */
+export const STATIC_DESCRIPTOR_SAMPLES = 4;
+export const STATIC_DESCRIPTOR_MAX_DISTANCE = 0.015;
 
 /** تسجيل بصمة الوجه */
 export const ENROLLMENT_SAMPLES = 7;

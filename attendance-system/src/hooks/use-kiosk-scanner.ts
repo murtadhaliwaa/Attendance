@@ -30,8 +30,14 @@ import {
   loadEnrollmentFaceModels,
   descriptorToArray,
   wasRecentLivenessRejection,
+  wasRecentMotionRejection,
   type EmployeeFaceData,
 } from "@/lib/face-recognition";
+import { getFaceEngine, markMotionRejection } from "@/lib/face-engine";
+import {
+  DescriptorStabilityTracker,
+  FaceMotionTracker,
+} from "@/lib/face-motion-liveness";
 
 const SCAN_INTERVAL_MS = 200;
 const SUCCESS_RESET_MS = 3000;
@@ -77,6 +83,8 @@ export function useKioskScanner(mode: KioskMode) {
   const isScanningFrameRef = useRef(false);
   const unknownHoldUntilRef = useRef(0);
   const spoofHoldUntilRef = useRef(0);
+  const motionTrackerRef = useRef(new FaceMotionTracker());
+  const stabilityTrackerRef = useRef(new DescriptorStabilityTracker());
 
   const [state, setState] = useState<KioskState>("loading");
   const [statusText, setStatusText] = useState("جاري طلب صلاحية الكاميرا...");
@@ -143,6 +151,8 @@ export function useKioskScanner(mode: KioskMode) {
     isProcessingRef.current = false;
     unknownHoldUntilRef.current = 0;
     spoofHoldUntilRef.current = 0;
+    motionTrackerRef.current.reset();
+    stabilityTrackerRef.current.reset();
     setVerifyProgress(0);
     setResult(null);
     setRecognizedName(null);
@@ -221,7 +231,7 @@ export function useKioskScanner(mode: KioskMode) {
       const detection = await detectFaceForScan(videoRef.current);
 
       if (!detection) {
-        if (wasRecentLivenessRejection()) {
+        if (wasRecentLivenessRejection() || wasRecentMotionRejection()) {
           spoofHoldUntilRef.current = Date.now() + SPOOF_FACE_HOLD_MS;
           matchStreakRef.current = null;
           setVerifyProgress(0);
@@ -253,6 +263,31 @@ export function useKioskScanner(mode: KioskMode) {
       }
 
       setScanPhase("matching");
+
+      motionTrackerRef.current.record(
+        detection.faceBox,
+        detection.frameWidth,
+        detection.frameHeight
+      );
+      stabilityTrackerRef.current.record(detection.descriptor);
+
+      const engine = getFaceEngine();
+      if (
+        !motionTrackerRef.current.hasEnoughMotion() ||
+        stabilityTrackerRef.current.isTooStatic(
+          detection.descriptor,
+          engine.euclideanDistance.bind(engine)
+        )
+      ) {
+        markMotionRejection();
+        spoofHoldUntilRef.current = Date.now() + SPOOF_FACE_HOLD_MS;
+        matchStreakRef.current = null;
+        setVerifyProgress(0);
+        setRecognizedName(null);
+        setScanPhase("unknown");
+        setStatusText(SPOOF_FACE_MESSAGE);
+        return;
+      }
 
       const enrolled = employees;
       if (enrolled.length === 0) {

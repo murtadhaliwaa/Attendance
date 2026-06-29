@@ -2,6 +2,9 @@ export type FaceDetectionOutput = {
   descriptor: Float32Array;
   score: number;
   faceSizeRatio: number;
+  faceBox: { x: number; y: number; width: number; height: number };
+  frameWidth: number;
+  frameHeight: number;
 };
 
 export interface FaceEngine {

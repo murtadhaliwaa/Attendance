@@ -3,6 +3,8 @@ export {
   humanFaceEngine,
   FACE_ENGINE_VERSION,
   wasRecentLivenessRejection,
+  wasRecentMotionRejection,
+  markMotionRejection,
 } from "./human-engine";
 export type { FaceDetectionOutput, FaceEngine } from "./types";
 
