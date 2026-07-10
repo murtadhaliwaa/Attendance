@@ -104,7 +104,6 @@ interface EmployeesManagerProps {
   departments: string[];
   departmentOptions: string[];
   positionOptions: string[];
-  suggestedCode: string;
   suggestedEmergencyCode: string;
 }
 
@@ -114,7 +113,6 @@ export function EmployeesManager({
   departments,
   departmentOptions,
   positionOptions,
-  suggestedCode,
   suggestedEmergencyCode,
 }: EmployeesManagerProps) {
   const router = useRouter();
@@ -177,7 +175,6 @@ export function EmployeesManager({
 
       return (
         employee.name.toLowerCase().includes(query) ||
-        employee.employeeCode.toLowerCase().includes(query) ||
         (employee.phone?.includes(query) ?? false) ||
         employee.department.toLowerCase().includes(query)
       );
@@ -341,7 +338,7 @@ export function EmployeesManager({
             <div className="relative flex-1">
               <Search className="absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-text-muted" />
               <Input
-                placeholder="بحث بالاسم، الرقم، أو الجوال..."
+                placeholder="بحث بالاسم أو الجوال..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -395,7 +392,6 @@ export function EmployeesManager({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-center">الرقم</TableHead>
                 <TableHead className="text-center">الاسم</TableHead>
                 <TableHead className="text-center">القسم</TableHead>
                 <TableHead className="text-center">المسمى</TableHead>
@@ -411,7 +407,7 @@ export function EmployeesManager({
               {paginated.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={showActions ? 8 : 7}
+                    colSpan={showActions ? 7 : 6}
                     className="py-12 text-center text-text-secondary"
                   >
                     <UserMinus className="mx-auto mb-2 size-8 opacity-50" />
@@ -424,12 +420,6 @@ export function EmployeesManager({
                     key={employee.id}
                     className={cn(!employee.isActive && "opacity-60")}
                   >
-                    <TableCell
-                      dir="ltr"
-                      className="text-center font-mono text-sm text-text-secondary"
-                    >
-                      {employee.employeeCode}
-                    </TableCell>
                     <TableCell className="text-center font-medium text-text-primary">
                       {employee.name}
                     </TableCell>
@@ -621,7 +611,6 @@ export function EmployeesManager({
         shifts={shifts}
         departments={departmentOptions}
         positions={positionOptions}
-        suggestedCode={suggestedCode}
         suggestedEmergencyCode={suggestedEmergencyCode}
         onSuccess={refresh}
       />
@@ -640,8 +629,7 @@ export function EmployeesManager({
                 <DialogDescription>
                   {ATTENDANCE_ACTION_LABELS[attendanceTarget.action].description}
                   <span className="mt-2 block font-medium text-text-primary">
-                    {attendanceTarget.employee.name} (
-                    {attendanceTarget.employee.employeeCode})
+                    {attendanceTarget.employee.name}
                   </span>
                 </DialogDescription>
               </DialogHeader>

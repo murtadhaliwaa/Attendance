@@ -99,7 +99,6 @@ function EmployeeReportDetail({
           </p>
           {employeeReport && (
             <p className="mt-1 text-xs text-text-muted">
-              {employeeReport.employee.employeeCode} ·{" "}
               {employeeReport.employee.department} ·{" "}
               {formatReportPeriod(weekFrom, weekTo)}
             </p>
@@ -256,7 +255,6 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
     const q = search.trim().toLowerCase();
     return (
       emp.employeeName.toLowerCase().includes(q) ||
-      emp.employeeCode.toLowerCase().includes(q) ||
       emp.department.toLowerCase().includes(q)
     );
   });
@@ -536,7 +534,7 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
           <div className="relative max-w-sm">
             <Search className="absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-text-muted" />
             <Input
-              placeholder="بحث بالاسم أو الرقم..."
+              placeholder="بحث بالاسم..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pr-9"
@@ -589,9 +587,6 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
                           >
                             {emp.employeeName}
                           </button>
-                          <p className="text-xs text-text-muted">
-                            {emp.employeeCode}
-                          </p>
                         </TableCell>
                         <TableCell className="text-center text-text-muted">
                           {emp.department}

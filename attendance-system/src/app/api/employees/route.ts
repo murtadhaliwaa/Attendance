@@ -10,7 +10,6 @@ import { parseCustomEndTime } from "@/lib/employee-shift";
 import {
   ensureShiftExists,
   validateEmergencyCode,
-  validateEmployeeCode,
 } from "@/lib/employee-validation";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
 import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
@@ -88,7 +87,6 @@ export async function POST(request: Request) {
     const department = String(body.department ?? "").trim();
     const position = String(body.position ?? "").trim();
     const phone = String(body.phone ?? "").trim() || null;
-    let employeeCode = String(body.employeeCode ?? "").trim().toUpperCase();
     let emergencyCode = String(body.emergencyCode ?? "").trim();
     const shiftId = String(body.shiftId ?? "").trim() || null;
     const isActive = body.isActive !== false;
@@ -122,13 +120,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "المسمى الوظيفي مطلوب" }, { status: 400 });
     }
 
-    if (!employeeCode) {
-      employeeCode = await nextEmployeeCode();
-    }
-    const employeeCodeError = validateEmployeeCode(employeeCode);
-    if (employeeCodeError) {
-      return NextResponse.json({ error: employeeCodeError }, { status: 400 });
-    }
+    const employeeCode = await nextEmployeeCode();
 
     if (!emergencyCode) {
       emergencyCode = await nextEmergencyCode();

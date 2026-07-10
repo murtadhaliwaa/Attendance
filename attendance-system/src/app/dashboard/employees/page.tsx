@@ -1,5 +1,5 @@
 import { EmployeesManager } from "@/components/dashboard/employees/employees-manager";
-import { nextEmployeeCode, nextEmergencyCode } from "@/lib/employee-codes";
+import { nextEmergencyCode } from "@/lib/employee-codes";
 import {
   employeeListSelect,
   serializeEmployee,
@@ -16,16 +16,14 @@ export default async function EmployeesPage() {
   const [
     employees,
     shifts,
-    suggestedCode,
     suggestedEmergencyCode,
     departmentLists,
   ] = await Promise.all([
     prisma.employee.findMany({
-      orderBy: { employeeCode: "asc" },
+      orderBy: { name: "asc" },
       select: employeeListSelect,
     }),
     getShiftOptions(),
-    nextEmployeeCode(),
     nextEmergencyCode(),
     getEmployeeDepartmentLists(),
   ]);
@@ -47,7 +45,6 @@ export default async function EmployeesPage() {
       departments={departmentLists.filters}
       departmentOptions={departmentLists.formOptions}
       positionOptions={positionOptions}
-      suggestedCode={suggestedCode}
       suggestedEmergencyCode={suggestedEmergencyCode}
     />
   );

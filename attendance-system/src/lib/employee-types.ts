@@ -37,7 +37,6 @@ export type ShiftOption = {
 };
 
 export type EmployeeFormData = {
-  employeeCode: string;
   name: string;
   department: string;
   position: string;
@@ -49,7 +48,6 @@ export type EmployeeFormData = {
 };
 
 export const emptyEmployeeForm = (department = ""): EmployeeFormData => ({
-  employeeCode: "",
   name: "",
   department,
   position: "",

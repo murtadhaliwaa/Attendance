@@ -10,7 +10,6 @@ import { parseCustomEndTime, toEmployeeUncheckedUpdateInput } from "@/lib/employ
 import {
   ensureShiftExists,
   validateEmergencyCode,
-  validateEmployeeCode,
 } from "@/lib/employee-validation";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
 import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
@@ -166,24 +165,6 @@ export async function PUT(
 
     if (body.phone !== undefined) {
       data.phone = String(body.phone).trim() || null;
-    }
-
-    if (body.employeeCode !== undefined) {
-      const employeeCode = String(body.employeeCode).trim().toUpperCase();
-      const employeeCodeError = validateEmployeeCode(employeeCode);
-      if (employeeCodeError) {
-        return NextResponse.json({ error: employeeCodeError }, { status: 400 });
-      }
-      const duplicate = await prisma.employee.findFirst({
-        where: { employeeCode, NOT: { id: params.id } },
-      });
-      if (duplicate) {
-        return NextResponse.json(
-          { error: `رقم الموظف ${employeeCode} مستخدم مسبقاً` },
-          { status: 409 }
-        );
-      }
-      data.employeeCode = employeeCode;
     }
 
     if (body.emergencyCode !== undefined) {

@@ -70,7 +70,6 @@ export function KioskScannerControls({
     return roster.filter(
       (e) =>
         e.name.toLowerCase().includes(query) ||
-        e.employeeCode.toLowerCase().includes(query) ||
         e.department.toLowerCase().includes(query)
     );
   }, [roster, employeeSearch]);
@@ -89,7 +88,7 @@ export function KioskScannerControls({
             <Search className="absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-text-muted" />
             <Input
               aria-label="بحث عن موظف"
-              placeholder="ابحث بالاسم أو الرقم..."
+              placeholder="ابحث بالاسم..."
               value={employeeSearch}
               onChange={(e) => setEmployeeSearch(e.target.value)}
               className="h-9 pr-9 text-right"
@@ -111,7 +110,7 @@ export function KioskScannerControls({
             <SelectContent>
               {filteredRoster.map((employee) => (
                 <SelectItem key={employee.id} value={employee.id}>
-                  {employee.name} ({employee.employeeCode})
+                  {employee.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -185,7 +184,7 @@ export function KioskScannerControls({
             <SelectContent>
               {roster.map((employee) => (
                 <SelectItem key={employee.id} value={employee.id}>
-                  {employee.name} ({employee.employeeCode})
+                  {employee.name}
                 </SelectItem>
               ))}
             </SelectContent>

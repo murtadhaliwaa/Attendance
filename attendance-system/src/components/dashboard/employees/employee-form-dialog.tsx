@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, Camera, IdCard, Loader2, UserRound } from "lucide-react";
+import { Briefcase, Camera, KeyRound, Loader2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,14 +46,12 @@ interface EmployeeFormDialogProps {
   shifts: ShiftOption[];
   departments: string[];
   positions: string[];
-  suggestedCode?: string;
   suggestedEmergencyCode?: string;
   onSuccess: () => void;
 }
 
 function toFormData(employee: EmployeeRow): EmployeeFormData {
   return {
-    employeeCode: employee.employeeCode,
     name: employee.name,
     department: employee.department,
     position: employee.position,
@@ -109,7 +107,6 @@ export function EmployeeFormDialog({
   shifts,
   departments,
   positions,
-  suggestedCode,
   suggestedEmergencyCode,
   onSuccess,
 }: EmployeeFormDialogProps) {
@@ -135,13 +132,12 @@ export function EmployeeFormDialog({
     } else {
       setForm({
         ...emptyEmployeeForm(""),
-        employeeCode: suggestedCode ?? "",
         emergencyCode: suggestedEmergencyCode ?? "",
         shiftId: shifts[0]?.id ?? "",
       });
       setReferencePhotoDataUrl(null);
     }
-  }, [open, employee, suggestedCode, suggestedEmergencyCode, shifts, departments]);
+  }, [open, employee, suggestedEmergencyCode, shifts, departments]);
 
   function updateField<K extends keyof EmployeeFormData>(
     key: K,
@@ -165,7 +161,6 @@ export function EmployeeFormDialog({
 
       const payload = {
         ...form,
-        employeeCode: form.employeeCode.trim().toUpperCase(),
         name: form.name.trim(),
         department: form.department.trim(),
         position: form.position.trim(),
@@ -222,48 +217,28 @@ export function EmployeeFormDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
           <form id="employee-form" onSubmit={handleSubmit} className="space-y-4">
             <FormSection
-              title="التعريف"
-              description="رقم الموظف للإدارة والرمز الطارئ في الحضور والانصراف عند تعذّر التعرف على الوجه"
-              icon={IdCard}
+              title="الرمز الطارئ"
+              description="6 أرقام — يُستخدم في الكشك عند تعذّر التقاط الصورة"
+              icon={KeyRound}
             >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="employeeCode">رقم الموظف</Label>
-                  <Input
-                    id="employeeCode"
-                    dir="ltr"
-                    className="h-9 font-mono"
-                    placeholder="EMP089"
-                    value={form.employeeCode}
-                    onChange={(e) =>
-                      updateField("employeeCode", e.target.value.toUpperCase())
-                    }
-                    disabled={isEdit}
-                  />
-                  {!isEdit && (
-                    <FieldHint>اتركه فارغاً ليُولَّد تلقائياً</FieldHint>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="emergencyCode">الرمز الطارئ</Label>
-                  <Input
-                    id="emergencyCode"
-                    dir="ltr"
-                    className="h-9 font-mono tracking-wider"
-                    placeholder="100089"
-                    maxLength={6}
-                    inputMode="numeric"
-                    value={form.emergencyCode}
-                    onChange={(e) =>
-                      updateField(
-                        "emergencyCode",
-                        e.target.value.replace(/\D/g, "")
-                      )
-                    }
-                  />
-                  <FieldHint>6 أرقام — للطوارئ في الحضور والانصراف</FieldHint>
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="emergencyCode">الرمز الطارئ</Label>
+                <Input
+                  id="emergencyCode"
+                  dir="ltr"
+                  className="h-9 font-mono tracking-wider"
+                  placeholder="100089"
+                  maxLength={6}
+                  inputMode="numeric"
+                  value={form.emergencyCode}
+                  onChange={(e) =>
+                    updateField(
+                      "emergencyCode",
+                      e.target.value.replace(/\D/g, "")
+                    )
+                  }
+                />
+                <FieldHint>اتركه فارغاً ليُولَّد تلقائياً</FieldHint>
               </div>
             </FormSection>
 

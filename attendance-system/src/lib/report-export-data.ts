@@ -13,7 +13,6 @@ import { formatReportPeriod } from "@/lib/report-week";
 export type ReportFileFormat = "excel" | "pdf";
 
 export const WEEKLY_REPORT_HEADERS = [
-  "رقم الموظف",
   "الاسم",
   "القسم",
   "أيام العمل",
@@ -65,7 +64,6 @@ export function buildWeeklyReportRows(
   format: ReportFileFormat
 ) {
   return data.employees.map((emp) => ({
-    "رقم الموظف": emp.employeeCode,
     الاسم: emp.employeeName,
     القسم: emp.department,
     "أيام العمل": emp.workingDays,
@@ -97,7 +95,7 @@ export function buildEmployeeReportTitleLines(
 ): string[] {
   return [
     `تقرير ${data.employee.name}`,
-    `${data.employee.employeeCode} · ${data.employee.department}`,
+    `${data.employee.department}`,
     `الفترة: ${formatReportPeriod(data.from, data.to)}`,
   ];
 }
@@ -133,7 +131,8 @@ export function buildEmployeeReportFilename(
   data: EmployeeReportData,
   extension: "xlsx" | "pdf"
 ) {
-  return `employee-${data.employee.employeeCode}-${data.from}-${data.to}.${extension}`;
+  const slug = data.employee.name.replace(/\s+/g, "-");
+  return `employee-${slug}-${data.from}-${data.to}.${extension}`;
 }
 
 export function rowsToMatrix(
