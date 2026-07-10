@@ -26,7 +26,7 @@ export function KioskEmployeePicker({
   isCheckin = true,
 }: KioskEmployeePickerProps) {
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(!value);
+  const [open, setOpen] = useState(false);
 
   const selected = roster.find((employee) => employee.id === value);
 
@@ -143,7 +143,7 @@ export function KioskEmployeePicker({
 
       {open && (
         <div className="overflow-hidden rounded-xl border border-bg-border bg-bg-card/90 shadow-sm">
-          <div className="max-h-44 overflow-y-auto overscroll-contain">
+          <div className="max-h-32 overflow-y-auto overscroll-contain">
             {filtered.length === 0 ? (
               <p className="px-3 py-6 text-center text-sm text-text-muted">
                 {query.trim()

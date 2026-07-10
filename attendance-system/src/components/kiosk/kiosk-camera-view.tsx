@@ -33,7 +33,11 @@ export function KioskCameraView({
     <>
       <div
         dir="ltr"
-        className={`relative min-h-0 flex-1 overflow-hidden rounded-xl border-2 bg-black ${accentRing}`}
+        className={cn(
+          "relative w-full overflow-hidden rounded-xl border-2 bg-black",
+          "aspect-[4/3] max-h-full min-h-[200px] flex-1",
+          accentRing
+        )}
       >
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -122,8 +122,8 @@ export function KioskScanner({ mode }: KioskScannerProps) {
             showEmergency ? "overflow-y-auto" : "overflow-hidden"
           }`}
         >
-          <div className="flex min-h-0 flex-1 gap-2 lg:flex-row lg:items-stretch">
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:items-stretch">
+            <div className="flex min-h-[min(38vh,240px)] shrink-0 flex-col gap-1.5 lg:min-h-0 lg:min-w-0 lg:flex-1 lg:shrink">
               <KioskCameraView
                 videoRef={videoRef}
                 state={state}
@@ -133,7 +133,9 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 previewUrl={previewUrl}
                 onRetryCamera={retryCamera}
               />
+            </div>
 
+            <div className="flex min-h-0 min-w-0 flex-col gap-1.5 overflow-y-auto lg:max-w-md lg:flex-1 lg:shrink-0">
               <KioskScannerControls
                 isCheckin={isCheckin}
                 accentActionClass={accentActionClass}
