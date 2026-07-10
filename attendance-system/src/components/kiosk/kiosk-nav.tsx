@@ -4,24 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Fingerprint,
-  LayoutDashboard,
   LogIn,
   LogOut,
   Monitor,
   MonitorSmartphone,
-  Settings,
-  Users,
-  FileBarChart,
 } from "lucide-react";
 import { useKioskTabletMode } from "@/hooks/use-kiosk-tablet-mode";
 import { cn } from "@/lib/utils";
+import { useUserRole } from "@/components/dashboard/role-context";
+import {
+  getDashboardNavItems,
+  isDashboardNavActive,
+} from "@/lib/dashboard-nav";
+import { usePendingReviewCount } from "@/hooks/use-pending-review-count";
+import { PendingReviewsBadge } from "@/components/dashboard/pending-reviews-badge";
 
-const dashboardItems = [
-  { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/employees", label: "الموظفون", icon: Users },
-  { href: "/dashboard/reports", label: "التقارير", icon: FileBarChart },
-  { href: "/dashboard/settings", label: "الإعدادات", icon: Settings },
-];
+const REVIEWS_HREF = "/dashboard/reviews";
 
 const kioskItems = [
   { href: "/kiosk", label: "الحضور و الانصراف", icon: Monitor, exact: true },
@@ -38,7 +36,7 @@ function NavLink({
 }: {
   href: string;
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: typeof Monitor;
   exact?: boolean;
 }) {
   const pathname = usePathname();
@@ -64,7 +62,48 @@ function NavLink({
   );
 }
 
-export function KioskSidebar() {
+function DashboardNavSection() {
+  const pathname = usePathname();
+  const role = useUserRole();
+  const pendingReviewCount = usePendingReviewCount();
+  const dashboardItems = getDashboardNavItems(role).filter(
+    (item) => item.href !== "/kiosk"
+  );
+
+  return (
+    <div className="space-y-0.5">
+      <p className="px-3 py-1.5 text-xs font-medium text-text-muted">
+        لوحة التحكم
+      </p>
+      {dashboardItems.map((item) => {
+        const isActive = isDashboardNavActive(pathname, item.href, item.exact);
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+              isActive
+                ? "bg-bg-elevated text-text-primary"
+                : "text-text-muted hover:bg-bg-elevated hover:text-text-secondary"
+            )}
+          >
+            <item.icon className="size-4 shrink-0" />
+            <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+              <span>{item.label}</span>
+              {item.href === REVIEWS_HREF && (
+                <PendingReviewsBadge count={pendingReviewCount} />
+              )}
+            </span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+export function KioskSidebar({ loggedIn }: { loggedIn: boolean }) {
   return (
     <aside className="hidden w-56 shrink-0 border-l border-bg-border bg-bg-sidebar lg:flex lg:flex-col">
       <div className="flex items-center gap-2.5 border-b border-bg-border px-4 py-4">
@@ -73,16 +112,14 @@ export function KioskSidebar() {
       </div>
 
       <nav className="flex-1 space-y-4 p-2">
-        <div className="space-y-0.5">
-          <p className="px-3 py-1.5 text-xs font-medium text-text-muted">
-            لوحة التحكم
-          </p>
-          {dashboardItems.map((item) => (
-            <NavLink key={item.href} {...item} />
-          ))}
-        </div>
+        {loggedIn && <DashboardNavSection />}
 
-        <div className="space-y-0.5 border-t border-bg-border pt-3">
+        <div
+          className={cn(
+            "space-y-0.5",
+            loggedIn && "border-t border-bg-border pt-3"
+          )}
+        >
           <p className="px-3 py-1.5 text-xs font-medium text-text-muted">
             الحضور و الانصراف
           </p>
@@ -95,32 +132,23 @@ export function KioskSidebar() {
   );
 }
 
-export function KioskMobileNav() {
+function KioskMobileNavGuest() {
   const pathname = usePathname();
-  const items = [
-    dashboardItems[0],
-    dashboardItems[1],
-    dashboardItems[2],
-    kioskItems[0],
-    dashboardItems[3],
-  ];
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-bg-border bg-bg-sidebar px-1 py-2 lg:hidden">
-      {items.map((item) => {
+      {kioskItems.map((item) => {
         const isActive =
-          item.href === "/kiosk"
-            ? pathname.startsWith("/kiosk")
-            : item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
+          item.exact === true
+            ? pathname === item.href
+            : pathname.startsWith(item.href);
 
         return (
           <Link
             key={item.href}
             href={item.href}
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-medium",
+              "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-medium",
               isActive ? "text-text-primary" : "text-text-muted"
             )}
           >
@@ -133,7 +161,50 @@ export function KioskMobileNav() {
   );
 }
 
-export function KioskShell({ children }: { children: React.ReactNode }) {
+function KioskMobileNavLoggedIn() {
+  const pathname = usePathname();
+  const role = useUserRole();
+  const pendingReviewCount = usePendingReviewCount();
+  const navItems = getDashboardNavItems(role);
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-bg-border bg-bg-sidebar px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden">
+      {navItems.map((item) => {
+        const isActive = isDashboardNavActive(pathname, item.href, item.exact);
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-[10px] font-medium transition-colors",
+              isActive ? "bg-bg-elevated text-text-primary" : "text-text-muted"
+            )}
+          >
+            <span className="relative">
+              <item.icon className="size-[18px]" />
+              {item.href === REVIEWS_HREF && pendingReviewCount > 0 && (
+                <PendingReviewsBadge
+                  count={pendingReviewCount}
+                  className="absolute -top-1.5 -end-2 min-w-[0.875rem] px-1 text-[9px]"
+                />
+              )}
+            </span>
+            <span className="truncate">{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+export function KioskShell({
+  children,
+  loggedIn,
+}: {
+  children: React.ReactNode;
+  loggedIn: boolean;
+}) {
   const pathname = usePathname();
   const { enabled: tabletMode } = useKioskTabletMode();
   const isScanner =
@@ -147,7 +218,7 @@ export function KioskShell({ children }: { children: React.ReactNode }) {
         isScanner ? "h-dvh overflow-hidden" : "min-h-screen"
       )}
     >
-      {!immersiveTablet && <KioskSidebar />}
+      {!immersiveTablet && <KioskSidebar loggedIn={loggedIn} />}
       <div
         className={cn(
           "flex flex-1 flex-col",
@@ -164,7 +235,8 @@ export function KioskShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-      {!immersiveTablet && <KioskMobileNav />}
+      {!immersiveTablet &&
+        (loggedIn ? <KioskMobileNavLoggedIn /> : <KioskMobileNavGuest />)}
     </div>
   );
 }
