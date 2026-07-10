@@ -2,8 +2,8 @@
 
 import {
   CheckCircle2,
+  Camera,
   Loader2,
-  ScanFace,
   XCircle,
 } from "lucide-react";
 import {
@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { KioskMode } from "@/lib/kiosk-types";
-import { useKioskScanner } from "@/hooks/use-kiosk-scanner";
+import { useKioskPhotoScanner } from "@/hooks/use-kiosk-photo-scanner";
 import { KioskResultPanel } from "@/components/kiosk/kiosk-result-panel";
 import { KioskScannerHeader } from "@/components/kiosk/kiosk-scanner-header";
 import { KioskCameraView } from "@/components/kiosk/kiosk-camera-view";
@@ -26,7 +26,7 @@ interface KioskScannerProps {
 }
 
 export function KioskScanner({ mode }: KioskScannerProps) {
-  const scanner = useKioskScanner(mode);
+  const scanner = useKioskPhotoScanner(mode);
   const {
     isCheckin,
     labels,
@@ -35,9 +35,6 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     facingMode,
     state,
     statusText,
-    verifyProgress,
-    scanPhase,
-    recognizedName,
     result,
     currentTime,
     showEmergency,
@@ -46,14 +43,17 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     emergencyEmployeeId,
     setEmergencyEmployeeId,
     roster,
+    shifts,
     rosterLoading,
+    selectedEmployeeId,
+    setSelectedEmployeeId,
+    selectedShiftId,
+    setSelectedShiftId,
+    previewUrl,
+    handleCapturePreview,
+    handleSubmitPhoto,
     handleEmergency,
     toggleEmergency,
-    showEnroll,
-    enrollName,
-    setEnrollName,
-    handleEnroll,
-    openEnroll,
     retryCamera,
   } = scanner;
 
@@ -71,35 +71,12 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     result?.action === "already_done" ||
     result?.action === "no_checkin";
 
-  const statusDescriptionClass = cn(
-    "text-center text-sm font-medium sm:text-base",
-    scanPhase === "unknown" ? "line-clamp-3" : "line-clamp-2",
-    result?.action === "already_checkin" && "font-semibold text-emerald-200",
-    result?.action === "already_done" && "font-semibold text-sky-200",
-    result?.action === "no_checkin" && "font-semibold text-amber-200",
-    !isBlockedStatus &&
-      (scanPhase === "matching" || state === "verifying") &&
-      (isCheckin ? "text-emerald-200" : "text-sky-200"),
-    !isBlockedStatus && scanPhase === "unknown" && "font-medium text-amber-200",
-    !isBlockedStatus &&
-      scanPhase !== "matching" &&
-      scanPhase !== "unknown" &&
-      state !== "verifying" &&
-      "text-text-primary"
-  );
-
   const cardTitle =
     state === "success" && result
-      ? recognizedName ?? "تم التعرف"
-      : state === "verifying"
-        ? recognizedName
-          ? `جاري التعرف على ${recognizedName}...`
-          : "جاري التعرف..."
-        : scanPhase === "unknown"
-          ? "لم يتم التعرف على الوجه"
-          : showEnroll
-            ? "تسجيل موظف جديد"
-            : labels.action;
+      ? result.employeeName
+      : state === "processing"
+        ? "جاري الإرسال..."
+        : labels.action;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden px-3 py-2">
@@ -118,9 +95,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
         <CardHeader className="shrink-0 gap-0.5 px-3 py-0">
           <CardTitle className="flex items-center justify-center gap-2 text-base font-semibold sm:text-lg">
             {state === "loading" && <Loader2 className="size-5 animate-spin" />}
-            {(state === "scanning" || state === "verifying") && (
-              <ScanFace className="size-5 text-blue-primary" />
-            )}
+            {state === "scanning" && <Camera className="size-5 text-blue-primary" />}
             {state === "processing" && (
               <Loader2 className="size-5 animate-spin" />
             )}
@@ -137,14 +112,14 @@ export function KioskScanner({ mode }: KioskScannerProps) {
             )}
             {cardTitle}
           </CardTitle>
-          <CardDescription className={statusDescriptionClass}>
+          <CardDescription className="text-center text-sm font-medium text-text-primary">
             {statusText}
           </CardDescription>
         </CardHeader>
 
         <CardContent
           className={`flex min-h-0 flex-1 flex-col gap-1.5 px-3 pb-2 ${
-            showEnroll || showEmergency ? "overflow-y-auto" : "overflow-hidden"
+            showEmergency ? "overflow-y-auto" : "overflow-hidden"
           }`}
         >
           <div className="flex min-h-0 flex-1 gap-2 lg:flex-row lg:items-stretch">
@@ -152,11 +127,10 @@ export function KioskScanner({ mode }: KioskScannerProps) {
               <KioskCameraView
                 videoRef={videoRef}
                 state={state}
-                scanPhase={scanPhase}
                 cameraReady={cameraReady}
-                verifyProgress={verifyProgress}
                 accentRing={accentRing}
                 facingMode={facingMode}
+                previewUrl={previewUrl}
                 onRetryCamera={retryCamera}
               />
 
@@ -169,14 +143,17 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 emergencyEmployeeId={emergencyEmployeeId}
                 onEmergencyEmployeeChange={setEmergencyEmployeeId}
                 roster={roster}
+                shifts={shifts}
                 rosterLoading={rosterLoading}
+                selectedEmployeeId={selectedEmployeeId}
+                onEmployeeChange={setSelectedEmployeeId}
+                selectedShiftId={selectedShiftId}
+                onShiftChange={setSelectedShiftId}
+                onCapturePreview={handleCapturePreview}
+                onSubmitPhoto={handleSubmitPhoto}
+                submitting={state === "processing"}
                 onToggleEmergency={toggleEmergency}
                 onSubmitEmergency={handleEmergency}
-                showEnroll={showEnroll}
-                enrollName={enrollName}
-                onEnrollNameChange={setEnrollName}
-                onOpenEnroll={openEnroll}
-                onSubmitEnroll={handleEnroll}
               />
             </div>
 

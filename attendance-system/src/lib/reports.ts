@@ -2,6 +2,10 @@ import { eachDayOfInterval, format } from "date-fns";
 import { arSA } from "date-fns/locale";
 import type { Status } from "@prisma/client";
 import { getShiftTimingsBundle } from "@/lib/attendance-reconcile";
+import {
+  isCheckInCounted,
+  isCheckOutCounted,
+} from "@/lib/attendance-verification";
 import { formatTimeAr } from "@/lib/attendance-utils";
 import { employeeShiftSelect } from "@/lib/employee-shift";
 import { prisma } from "@/lib/prisma";
@@ -160,6 +164,8 @@ export async function getWeeklyReport(
       date: true,
       status: true,
       checkIn: true,
+      checkInMethod: true,
+      checkInVerificationStatus: true,
     },
   });
 
@@ -169,6 +175,14 @@ export async function getWeeklyReport(
   >();
 
   for (const record of attendances) {
+    if (
+      !isCheckInCounted(
+        record.checkInMethod,
+        record.checkInVerificationStatus
+      )
+    ) {
+      continue;
+    }
     const dayKey = toDateKey(record.date);
     if (!attendanceByEmployee.has(record.employeeId)) {
       attendanceByEmployee.set(record.employeeId, new Map());
@@ -210,7 +224,10 @@ function buildEmployeeSummary(days: EmployeeDayRecord[]): EmployeeReportSummary 
   const absent = days.filter((d) => d.status === "ABSENT").length;
   const attended = present + late + earlyLeave;
   const accountableDays = days.filter(
-    (d) => d.status !== "UPCOMING" && d.status !== "PENDING"
+    (d) =>
+      d.status !== "UPCOMING" &&
+      d.status !== "PENDING" &&
+      d.status !== "AWAITING_REVIEW"
   );
   const attendanceRate =
     accountableDays.length > 0
@@ -268,6 +285,8 @@ export async function getEmployeeReport(
       checkOutMethod: true,
       checkInSupervisorName: true,
       checkOutSupervisorName: true,
+      checkInVerificationStatus: true,
+      checkOutVerificationStatus: true,
     },
     orderBy: { date: "asc" },
   });
@@ -282,6 +301,40 @@ export async function getEmployeeReport(
       const record = attendanceByDate.get(dayKey);
 
       if (record) {
+        const checkInCounted = isCheckInCounted(
+          record.checkInMethod,
+          record.checkInVerificationStatus
+        );
+        const checkOutCounted = isCheckOutCounted(
+          record.checkOutMethod,
+          record.checkOutVerificationStatus
+        );
+
+        if (!checkInCounted) {
+          const pending =
+            record.checkInVerificationStatus === "PENDING" ||
+            record.checkOutVerificationStatus === "PENDING";
+
+          return {
+            date: dayKey,
+            dayName: format(day, "EEEE", { locale: arSA }),
+            status: pending ? "AWAITING_REVIEW" : "ABSENT",
+            checkIn: record.checkIn ? formatTimeAr(record.checkIn) : null,
+            checkOut:
+              record.checkOut && checkOutCounted
+                ? formatTimeAr(record.checkOut)
+                : null,
+            isWorkingDay: true,
+            lateMinutes: null,
+            checkInMethod: record.checkInMethod,
+            checkOutMethod: record.checkOutMethod,
+            checkInSupervisorName: record.checkInSupervisorName,
+            checkOutSupervisorName: record.checkOutSupervisorName,
+            checkInVerificationStatus: record.checkInVerificationStatus,
+            checkOutVerificationStatus: record.checkOutVerificationStatus,
+          };
+        }
+
         let lateMinutes: number | null = null;
         if (record.status === "LATE" && record.checkIn) {
           const minutes = computeLateMinutes(
@@ -297,13 +350,18 @@ export async function getEmployeeReport(
           dayName: format(day, "EEEE", { locale: arSA }),
           status: record.status,
           checkIn: record.checkIn ? formatTimeAr(record.checkIn) : null,
-          checkOut: record.checkOut ? formatTimeAr(record.checkOut) : null,
+          checkOut:
+            record.checkOut && checkOutCounted
+              ? formatTimeAr(record.checkOut)
+              : null,
           isWorkingDay: true,
           lateMinutes,
           checkInMethod: record.checkInMethod,
           checkOutMethod: record.checkOutMethod,
           checkInSupervisorName: record.checkInSupervisorName,
           checkOutSupervisorName: record.checkOutSupervisorName,
+          checkInVerificationStatus: record.checkInVerificationStatus,
+          checkOutVerificationStatus: record.checkOutVerificationStatus,
         };
       }
 
@@ -319,6 +377,8 @@ export async function getEmployeeReport(
         checkOutMethod: null,
         checkInSupervisorName: null,
         checkOutSupervisorName: null,
+        checkInVerificationStatus: null,
+        checkOutVerificationStatus: null,
       };
     }
   );

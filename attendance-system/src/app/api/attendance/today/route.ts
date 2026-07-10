@@ -37,12 +37,17 @@ export async function GET(request: Request) {
 
   let nextAction: "checkin" | "checkout" | "already_checkin" | "done" = "checkin";
 
-  if (!hasCheckIn) {
+  if (!hasCheckIn || attendance?.checkInVerificationStatus === "REJECTED") {
     nextAction = "checkin";
-  } else if (hasCheckOut) {
+  } else if (hasCheckOut && attendance?.checkOutVerificationStatus !== "REJECTED") {
     nextAction = "done";
-  } else {
+  } else if (
+    attendance?.checkInVerificationStatus === "APPROVED" ||
+    attendance?.checkInMethod !== "PHOTO"
+  ) {
     nextAction = "checkout";
+  } else {
+    nextAction = "already_checkin";
   }
 
   return NextResponse.json({
@@ -52,6 +57,8 @@ export async function GET(request: Request) {
     checkOut: attendance?.checkOut,
     checkInTime: attendance?.checkIn ? formatTimeAr(attendance.checkIn) : null,
     checkOutTime: attendance?.checkOut ? formatTimeAr(attendance.checkOut) : null,
+    checkInVerificationStatus: attendance?.checkInVerificationStatus ?? null,
+    checkOutVerificationStatus: attendance?.checkOutVerificationStatus ?? null,
     status: attendance?.status,
     employeeName: employee.name,
     nextAction,

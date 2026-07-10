@@ -4,6 +4,7 @@ import {
   AdminAttendanceError,
   adminClearCheckIn,
   adminClearCheckOut,
+  adminClearDay,
   adminRecordCheckIn,
   adminRecordCheckOut,
   getEmployeeForAttendance,
@@ -18,6 +19,7 @@ const ACTIONS: AdminAttendanceAction[] = [
   "checkout",
   "clear_checkin",
   "clear_checkout",
+  "clear_day",
 ];
 
 function isAdminAttendanceAction(value: string): value is AdminAttendanceAction {
@@ -86,7 +88,9 @@ export async function POST(
           ? await adminRecordCheckOut(employee)
           : action === "clear_checkin"
             ? await adminClearCheckIn(employee)
-            : await adminClearCheckOut(employee);
+            : action === "clear_checkout"
+              ? await adminClearCheckOut(employee)
+              : await adminClearDay(employee);
 
     return NextResponse.json(result);
   } catch (error) {

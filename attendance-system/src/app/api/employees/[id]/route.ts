@@ -15,6 +15,7 @@ import {
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
 import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
 import { isValidFaceDescriptor } from "@/lib/face-verify-server";
+import { uploadEmployeePhoto } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -90,6 +91,8 @@ export async function PUT(
       faceDescriptor?: number[];
       hasFaceRegistered?: boolean;
       faceDescriptorVersion?: number;
+      referencePhotoUrl?: string | null;
+      hasReferencePhoto?: boolean;
     } = {};
 
     if (body.clearFace === true) {
@@ -238,6 +241,26 @@ export async function PUT(
 
     if (body.isActive !== undefined) {
       data.isActive = Boolean(body.isActive);
+    }
+
+    const referencePhotoDataUrl =
+      typeof body.referencePhotoDataUrl === "string"
+        ? body.referencePhotoDataUrl.trim()
+        : "";
+
+    if (referencePhotoDataUrl) {
+      const photoPath = await uploadEmployeePhoto(
+        params.id,
+        "reference",
+        referencePhotoDataUrl
+      );
+      data.referencePhotoUrl = photoPath;
+      data.hasReferencePhoto = true;
+    }
+
+    if (body.clearReferencePhoto === true) {
+      data.referencePhotoUrl = null;
+      data.hasReferencePhoto = false;
     }
 
     if (Object.keys(data).length === 0) {

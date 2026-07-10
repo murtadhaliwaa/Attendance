@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   UserPlus,
@@ -56,18 +55,16 @@ import { usePermission } from "@/components/dashboard/role-context";
 import { cn } from "@/lib/utils";
 import { formatTimeLabel } from "@/lib/schedule-utils";
 import type { EmployeeRow, ShiftOption } from "@/lib/employee-types";
-
-const EmployeeFormDialog = dynamic(
-  () =>
-    import("@/components/dashboard/employees/employee-form-dialog").then(
-      (module) => module.EmployeeFormDialog
-    ),
-  { ssr: false }
-);
+import { EmployeeFormDialog } from "@/components/dashboard/employees/employee-form-dialog";
 
 const PAGE_SIZE = 15;
 
-type AttendanceAction = "checkin" | "checkout" | "clear_checkin" | "clear_checkout";
+type AttendanceAction =
+  | "checkin"
+  | "checkout"
+  | "clear_checkin"
+  | "clear_checkout"
+  | "clear_day";
 
 const ATTENDANCE_ACTION_LABELS: Record<
   AttendanceAction,
@@ -92,6 +89,12 @@ const ATTENDANCE_ACTION_LABELS: Record<
     title: "مسح انصراف اليوم",
     description: "يحذف سجل انصراف الموظف لهذا اليوم ويبقي الحضور كما هو.",
     confirm: "مسح الانصراف",
+  },
+  clear_day: {
+    title: "مسح سجل اليوم كاملاً",
+    description:
+      "يحذف حضور وانصراف الموظف لهذا اليوم بالكامل — استخدمه إذا كان الانصراف مسجّلاً.",
+    confirm: "مسح السجل كاملاً",
   },
 };
 
@@ -148,15 +151,17 @@ export function EmployeesManager({
 
   const stats = useMemo(() => {
     const active = employees.filter((e) => e.isActive).length;
-    const withFace = employees.filter((e) => e.isActive && e.hasFace).length;
-    const withoutFace = employees.filter(
-      (e) => e.isActive && !e.hasFace
+    const withReferencePhoto = employees.filter(
+      (e) => e.isActive && e.hasReferencePhoto
+    ).length;
+    const withoutReferencePhoto = employees.filter(
+      (e) => e.isActive && !e.hasReferencePhoto
     ).length;
     return {
       total: employees.length,
       active,
-      withFace,
-      withoutFace,
+      withReferencePhoto,
+      withoutReferencePhoto,
     };
   }, [employees]);
 
@@ -217,6 +222,8 @@ export function EmployeesManager({
     setActionLoading(loadingKey);
     try {
       await action();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "فشل تنفيذ العملية");
     } finally {
       setActionLoading(null);
     }
@@ -315,7 +322,7 @@ export function EmployeesManager({
     <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-text-muted">
-          {stats.active} نشط · {stats.withFace} مسجّل الوجه
+          {stats.active} نشط · {stats.withReferencePhoto} صورة مرجعية
         </p>
         {canCreate && (
           <Button
@@ -393,7 +400,7 @@ export function EmployeesManager({
                 <TableHead className="text-center">القسم</TableHead>
                 <TableHead className="text-center">المسمى</TableHead>
                 <TableHead className="text-center">الشفت</TableHead>
-                <TableHead className="text-center">الوجه</TableHead>
+                <TableHead className="text-center">الصورة المرجعية</TableHead>
                 <TableHead className="text-center">الحالة</TableHead>
                 {showActions && (
                   <TableHead className="w-12 text-center">إجراءات</TableHead>
@@ -443,13 +450,7 @@ export function EmployeesManager({
                       </div>
                     </TableCell>
                     <TableCell className="text-center text-sm text-text-muted">
-                      {employee.needsFaceReEnrollment ? (
-                        <span className="text-amber-600">يحتاج إعادة تسجيل</span>
-                      ) : employee.hasFace ? (
-                        "مسجّل"
-                      ) : (
-                        "—"
-                      )}
+                      {employee.hasReferencePhoto ? "مسجّلة" : "—"}
                     </TableCell>
                     <TableCell className="text-center text-sm text-text-muted">
                       {employee.isActive ? "نشط" : "موقوف"}
@@ -540,6 +541,17 @@ export function EmployeesManager({
                                       <Eraser />
                                       مسح انصراف اليوم
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setAttendanceTarget({
+                                          employee,
+                                          action: "clear_day",
+                                        })
+                                      }
+                                    >
+                                      <Eraser />
+                                      مسح سجل اليوم كاملاً
+                                    </DropdownMenuItem>
                                   </>
                                 )}
                                 <DropdownMenuSeparator />
@@ -606,7 +618,6 @@ export function EmployeesManager({
         open={formOpen}
         onOpenChange={setFormOpen}
         employee={editingEmployee}
-        employees={employees}
         shifts={shifts}
         departments={departmentOptions}
         positions={positionOptions}

@@ -1,4 +1,5 @@
 import type { KioskMode } from "@/lib/kiosk-types";
+import type { VerificationStatus } from "@prisma/client";
 
 export type KioskState =
   | "loading"
@@ -32,6 +33,8 @@ export interface TodayStatus {
   checkInTime: string | null;
   checkOutTime: string | null;
   employeeName: string;
+  checkInVerificationStatus?: VerificationStatus | null;
+  checkOutVerificationStatus?: VerificationStatus | null;
 }
 
 export interface MatchStreak {
@@ -56,13 +59,21 @@ export function getBlockReason(
   mode: KioskMode,
   today: TodayStatus
 ): BlockReason | null {
+  const checkInStatus = today.checkInVerificationStatus;
+  const checkOutStatus = today.checkOutVerificationStatus;
+
   if (mode === "checkin") {
-    if (today.hasCheckIn) return "already_checkin";
-    return null;
+    if (!today.hasCheckIn) return null;
+    if (checkInStatus === "REJECTED") return null;
+    return "already_checkin";
   }
-  if (!today.hasCheckIn) return "no_checkin";
-  if (today.hasCheckOut) return "already_done";
-  return null;
+
+  if (!today.hasCheckIn || checkInStatus === "REJECTED") return "no_checkin";
+  if (checkInStatus === "PENDING") return "no_checkin";
+
+  if (!today.hasCheckOut) return null;
+  if (checkOutStatus === "REJECTED") return null;
+  return "already_done";
 }
 
 export function blockMessage(
@@ -72,10 +83,19 @@ export function blockMessage(
   today: TodayStatus
 ): string {
   if (reason === "already_checkin") {
+    if (today.checkInVerificationStatus === "PENDING") {
+      return `أنت ${employeeName}، طلب حضورك قيد المراجعة — انتظر تأكيد موظف الاستعلامات`;
+    }
     return `أنت ${employeeName}، حضورك مسجّل مسبقاً (${today.checkInTime ?? ""})`;
   }
   if (reason === "no_checkin") {
+    if (today.checkInVerificationStatus === "PENDING") {
+      return `أنت ${employeeName}، انتظر تأكيد حضورك أولاً قبل تسجيل الانصراف`;
+    }
     return `أنت ${employeeName}، سجّل حضورك أولاً من صفحة الحضور`;
+  }
+  if (today.checkOutVerificationStatus === "PENDING") {
+    return `أنت ${employeeName}، طلب انصرافك قيد المراجعة — انتظر تأكيد موظف الاستعلامات`;
   }
   return `أنت ${employeeName}، انصرافك مسجّل مسبقاً (${today.checkOutTime ?? ""})`;
 }

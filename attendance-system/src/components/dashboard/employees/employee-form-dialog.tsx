@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Briefcase, IdCard, Loader2, ScanFace, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Briefcase, Camera, IdCard, Loader2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,15 +22,27 @@ import {
   emptyEmployeeForm,
 } from "@/lib/employee-types";
 import { CustomEndTimePicker } from "@/components/dashboard/employees/custom-end-time-picker";
-import { FaceEnrollmentPanel } from "@/components/dashboard/employees/face-enrollment-panel";
+import dynamic from "next/dynamic";
 import { SelectionCard } from "@/components/dashboard/selection-card";
 import { formatShiftRangeLabel } from "@/lib/schedule-utils";
+
+const ReferencePhotoPanel = dynamic(
+  () =>
+    import("@/components/dashboard/employees/reference-photo-panel").then(
+      (module) => module.ReferencePhotoPanel
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm text-text-secondary">جاري تحميل الكاميرا...</p>
+    ),
+  }
+);
 
 interface EmployeeFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employee: EmployeeRow | null;
-  employees: EmployeeRow[];
   shifts: ShiftOption[];
   departments: string[];
   positions: string[];
@@ -94,7 +106,6 @@ export function EmployeeFormDialog({
   open,
   onOpenChange,
   employee,
-  employees,
   shifts,
   departments,
   positions,
@@ -105,32 +116,9 @@ export function EmployeeFormDialog({
   const isEdit = !!employee;
   const [form, setForm] = useState<EmployeeFormData>(emptyEmployeeForm());
   const [saving, setSaving] = useState(false);
-  const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
-  const [faceForced, setFaceForced] = useState(false);
-  const [clearFace, setClearFace] = useState(false);
-
-  const handleFaceCaptured = (descriptor: number[] | null, forced = false) => {
-    setFaceDescriptor(descriptor);
-    setFaceForced(descriptor ? forced : false);
-  };
-
-  const matchedEmployeeWithFace = useMemo(() => {
-    if (isEdit) return null;
-    const name = form.name.trim().toLowerCase();
-    if (!name) return null;
-    return (
-      employees.find(
-        (row) =>
-          row.isActive &&
-          row.hasFace &&
-          row.name.trim().toLowerCase() === name
-      ) ?? null
-    );
-  }, [employees, form.name, isEdit]);
-
-  const hasExistingFace = isEdit
-    ? !!employee?.hasFace && !employee?.needsFaceReEnrollment
-    : !!matchedEmployeeWithFace;
+  const [referencePhotoDataUrl, setReferencePhotoDataUrl] = useState<string | null>(
+    null
+  );
 
   const selectedShift = shifts.find((shift) => shift.id === form.shiftId);
 
@@ -143,9 +131,7 @@ export function EmployeeFormDialog({
         ...data,
         shiftId: data.shiftId || shifts[0]?.id || "",
       });
-      setFaceDescriptor(null);
-      setFaceForced(false);
-      setClearFace(false);
+      setReferencePhotoDataUrl(null);
     } else {
       setForm({
         ...emptyEmployeeForm(""),
@@ -153,9 +139,7 @@ export function EmployeeFormDialog({
         emergencyCode: suggestedEmergencyCode ?? "",
         shiftId: shifts[0]?.id ?? "",
       });
-      setFaceDescriptor(null);
-      setFaceForced(false);
-      setClearFace(false);
+      setReferencePhotoDataUrl(null);
     }
   }, [open, employee, suggestedCode, suggestedEmergencyCode, shifts, departments]);
 
@@ -175,6 +159,10 @@ export function EmployeeFormDialog({
         throw new Error("يجب اختيار شفت للموظف");
       }
 
+      if (!isEdit && !referencePhotoDataUrl) {
+        throw new Error("يجب التقاط الصورة المرجعية للموظف");
+      }
+
       const payload = {
         ...form,
         employeeCode: form.employeeCode.trim().toUpperCase(),
@@ -185,9 +173,9 @@ export function EmployeeFormDialog({
         emergencyCode: form.emergencyCode.trim(),
         shiftId: form.shiftId,
         customEndTime: form.customEndTime.trim() || null,
-        ...(faceDescriptor ? { faceDescriptor } : {}),
-        ...(faceDescriptor && faceForced ? { forceFace: true } : {}),
-        ...(clearFace ? { clearFace: true } : {}),
+        ...(referencePhotoDataUrl
+          ? { referencePhotoDataUrl }
+          : {}),
       };
 
       const res = await fetch(
@@ -226,8 +214,8 @@ export function EmployeeFormDialog({
           </DialogTitle>
           <DialogDescription className="text-text-secondary">
             {isEdit
-              ? "عدّل بيانات الموظف أو سجّل/حدّث بصمة الوجه من الكاميرا"
-              : "أدخل البيانات الأساسية — يمكنك تسجيل بصمة الوجه مباشرة أو لاحقاً من الكiosk"}
+              ? "عدّل بيانات الموظف أو حدّث الصورة المرجعية"
+              : "أدخل البيانات الأساسية والصورة المرجعية — تُستخدم لمراجعة الحضور والانصراف"}
           </DialogDescription>
         </DialogHeader>
 
@@ -398,26 +386,16 @@ export function EmployeeFormDialog({
             </FormSection>
 
             <FormSection
-              title="بصمة الوجه"
-              description="اختياري — لتسجيل الحضور بالكاميرا في الحضور والانصراف"
-              icon={ScanFace}
+              title="الصورة المرجعية"
+              description="مطلوبة مرة واحدة — تُستخدم لمراجعة صور الحضور والانصراف"
+              icon={Camera}
             >
-              {isEdit && employee?.needsFaceReEnrollment && (
-                <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  البصمة القديمة لم تعد متوافقة. سجّل الوجه من جديد لتفعيل الحضور
-                  بالكاميرا.
-                </p>
-              )}
-              <FaceEnrollmentPanel
+              <ReferencePhotoPanel
                 active={open}
-                hasExistingFace={hasExistingFace}
-                allowManageExisting={isEdit}
-                captured={faceDescriptor}
-                cleared={clearFace}
-                excludeEmployeeId={employee?.id}
-                onCaptured={handleFaceCaptured}
-                onClearExisting={() => setClearFace(true)}
-                onUndoClear={() => setClearFace(false)}
+                hasExistingPhoto={!!employee?.hasReferencePhoto}
+                existingPhotoPath={employee?.referencePhotoUrl ?? null}
+                photoDataUrl={referencePhotoDataUrl}
+                onCaptured={setReferencePhotoDataUrl}
               />
             </FormSection>
 

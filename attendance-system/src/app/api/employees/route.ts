@@ -15,6 +15,7 @@ import {
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
 import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
 import { isValidFaceDescriptor } from "@/lib/face-verify-server";
+import { uploadEmployeePhoto } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
@@ -201,6 +202,18 @@ export async function POST(request: Request) {
       }
     }
 
+    const referencePhotoDataUrl =
+      typeof body.referencePhotoDataUrl === "string"
+        ? body.referencePhotoDataUrl.trim()
+        : "";
+
+    if (!referencePhotoDataUrl && !hasFace) {
+      return NextResponse.json(
+        { error: "الصورة المرجعية مطلوبة لتسجيل الموظف" },
+        { status: 400 }
+      );
+    }
+
     const employee = await prisma.employee.create({
       data: {
         employeeCode,
@@ -220,10 +233,32 @@ export async function POST(request: Request) {
       select: employeeListSelect,
     });
 
+    let savedEmployee = employee;
+    if (referencePhotoDataUrl) {
+      try {
+        const photoPath = await uploadEmployeePhoto(
+          employee.id,
+          "reference",
+          referencePhotoDataUrl
+        );
+        savedEmployee = await prisma.employee.update({
+          where: { id: employee.id },
+          data: {
+            referencePhotoUrl: photoPath,
+            hasReferencePhoto: true,
+          },
+          select: employeeListSelect,
+        });
+      } catch (uploadError) {
+        await prisma.employee.delete({ where: { id: employee.id } });
+        throw uploadError;
+      }
+    }
+
     return NextResponse.json(
       {
-        message: `تم إضافة ${employee.name} بنجاح`,
-        employee: serializeEmployee(employee),
+        message: `تم إضافة ${savedEmployee.name} بنجاح`,
+        employee: serializeEmployee(savedEmployee),
       },
       { status: 201 }
     );

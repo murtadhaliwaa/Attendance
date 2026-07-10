@@ -8,11 +8,16 @@ import {
   getDashboardNavItems,
   isDashboardNavActive,
 } from "@/lib/dashboard-nav";
+import { usePendingReviewCount } from "@/hooks/use-pending-review-count";
+import { PendingReviewsBadge } from "@/components/dashboard/pending-reviews-badge";
+
+const REVIEWS_HREF = "/dashboard/reviews";
 
 export function MobileNav() {
   const pathname = usePathname();
   const role = useUserRole();
   const navItems = getDashboardNavItems(role);
+  const pendingReviewCount = usePendingReviewCount();
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-bg-border bg-bg-sidebar/95 px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
@@ -30,7 +35,15 @@ export function MobileNav() {
                 : "text-text-muted"
             )}
           >
-            <item.icon className="size-[18px]" />
+            <span className="relative">
+              <item.icon className="size-[18px]" />
+              {item.href === REVIEWS_HREF && pendingReviewCount > 0 && (
+                <PendingReviewsBadge
+                  count={pendingReviewCount}
+                  className="absolute -top-1.5 -end-2 min-w-[0.875rem] px-1 text-[9px]"
+                />
+              )}
+            </span>
             <span className="truncate">{item.label}</span>
           </Link>
         );

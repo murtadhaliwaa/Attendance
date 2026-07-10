@@ -17,7 +17,8 @@ export type AdminAttendanceAction =
   | "checkin"
   | "checkout"
   | "clear_checkin"
-  | "clear_checkout";
+  | "clear_checkout"
+  | "clear_day";
 
 export async function getEmployeeForAttendance(
   employeeId: string
@@ -184,6 +185,27 @@ export async function adminClearCheckOut(employee: EmployeeWithShift) {
     message: `تم مسح انصراف ${employee.name} لهذا اليوم`,
     employeeName: employee.name,
     action: "clear_checkout" as const,
+  };
+}
+
+/** يحذف سجل اليوم بالكامل (حضور وانصراف وصور المراجعة) */
+export async function adminClearDay(employee: EmployeeWithShift) {
+  const today = getTodayDate();
+
+  const existing = await prisma.attendance.findUnique({
+    where: { employeeId_date: { employeeId: employee.id, date: today } },
+  });
+
+  if (!existing) {
+    throw new AdminAttendanceError("لا يوجد سجل حضور اليوم لهذا الموظف", 400);
+  }
+
+  await prisma.attendance.delete({ where: { id: existing.id } });
+
+  return {
+    message: `تم مسح سجل ${employee.name} لهذا اليوم بالكامل`,
+    employeeName: employee.name,
+    action: "clear_day" as const,
   };
 }
 

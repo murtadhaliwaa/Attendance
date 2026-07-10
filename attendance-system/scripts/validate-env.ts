@@ -14,7 +14,12 @@ const REQUIRED = [
   "KIOSK_API_KEY",
 ] as const;
 
-const RECOMMENDED = ["DIRECT_URL"] as const;
+const RECOMMENDED = [
+  "DIRECT_URL",
+  "SUPABASE_S3_ACCESS_KEY_ID",
+  "SUPABASE_S3_SECRET_ACCESS_KEY",
+  "SUPABASE_S3_REGION",
+] as const;
 
 function isPlaceholder(value: string | undefined): boolean {
   if (!value?.trim()) return true;
@@ -55,6 +60,17 @@ function main() {
   if (warnings.length > 0) {
     console.warn("⚠️  متغيرات مُوصى بها ناقصة:");
     warnings.forEach((k) => console.warn(`   - ${k}`));
+  }
+
+  const hasS3 =
+    !!process.env.SUPABASE_S3_ACCESS_KEY_ID?.trim() &&
+    !!process.env.SUPABASE_S3_SECRET_ACCESS_KEY?.trim();
+  if (hasS3) {
+    console.log("   تخزين الصور (S3): ✓");
+  } else {
+    console.warn(
+      "⚠️  مفاتيح S3 غير مكتملة — رفع الصور (المرجعية والحضور) لن يعمل"
+    );
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;

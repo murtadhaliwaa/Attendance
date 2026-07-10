@@ -29,6 +29,7 @@ import { employeeShiftSelect } from "@/lib/employee-shift";
 import { resolveEmployeeShift } from "@/lib/attendance-shift";
 import { getShiftTimingsBundle } from "@/lib/attendance-reconcile";
 import { getTodayDate } from "@/lib/app-timezone";
+import { isCheckInCounted } from "@/lib/attendance-verification";
 
 export default async function DashboardPage() {
   const systemUser = await getSessionSystemUser();
@@ -40,16 +41,19 @@ export default async function DashboardPage() {
   const [
     { allShifts, defaultShift },
     employeeCount,
-    statusGroups,
+    todayAttendances,
     recentRecords,
     recentAlerts,
   ] = await Promise.all([
     getShiftTimingsBundle(),
     prisma.employee.count({ where: { isActive: true } }),
-    prisma.attendance.groupBy({
-      by: ["status"],
-      where: { date: today },
-      _count: { _all: true },
+    prisma.attendance.findMany({
+      where: { date: today, checkIn: { not: null } },
+      select: {
+        status: true,
+        checkInMethod: true,
+        checkInVerificationStatus: true,
+      },
     }),
     prisma.attendance.findMany({
       where: { date: today, checkIn: { not: null } },
@@ -64,6 +68,8 @@ export default async function DashboardPage() {
         checkOutMethod: true,
         checkInSupervisorName: true,
         checkOutSupervisorName: true,
+        checkInVerificationStatus: true,
+        checkOutVerificationStatus: true,
         employee: {
           select: {
             name: true,
@@ -80,12 +86,11 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  const todayAttendanceCount = statusGroups.reduce(
-    (sum, group) => sum + group._count._all,
-    0
+  const countedToday = todayAttendances.filter((record) =>
+    isCheckInCounted(record.checkInMethod, record.checkInVerificationStatus)
   );
-  const lateToday =
-    statusGroups.find((group) => group.status === "LATE")?._count._all ?? 0;
+  const todayAttendanceCount = countedToday.length;
+  const lateToday = countedToday.filter((record) => record.status === "LATE").length;
   const unreadAlerts = recentAlerts.length;
 
   const attendanceRows = recentRecords.map((record) => {

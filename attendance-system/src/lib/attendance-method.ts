@@ -18,6 +18,9 @@ export function formatAttendanceMethodLabel(
   if (info.method === "MANUAL") {
     return "تسجيل يدوي";
   }
+  if (info.method === "PHOTO") {
+    return "صورة (مراجعة)";
+  }
   return "بصمة الوجه";
 }
 

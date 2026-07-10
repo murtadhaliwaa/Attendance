@@ -24,6 +24,8 @@ export type EmployeeRow = {
   customEndTime: string | null;
   isActive: boolean;
   hasFace: boolean;
+  hasReferencePhoto: boolean;
+  referencePhotoUrl: string | null;
   needsFaceReEnrollment?: boolean;
 };
 

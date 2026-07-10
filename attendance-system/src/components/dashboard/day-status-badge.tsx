@@ -10,7 +10,7 @@ export function DayStatusBadge({ status }: { status: EmployeeDayStatus }) {
     return <span className={mutedBadgeClass}>عطلة أسبوعية</span>;
   }
 
-  if (status === "UPCOMING" || status === "PENDING") {
+  if (status === "UPCOMING" || status === "PENDING" || status === "AWAITING_REVIEW") {
     return <span className={mutedBadgeClass}>{dayStatusLabels[status]}</span>;
   }
 

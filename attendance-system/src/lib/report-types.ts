@@ -1,4 +1,4 @@
-import type { Status, Method } from "@prisma/client";
+import type { Status, Method, VerificationStatus } from "@prisma/client";
 
 export type ReportFilters = {
   from?: string;
@@ -38,7 +38,12 @@ export type WeeklyReportData = {
   employees: WeeklyEmployeeSummary[];
 };
 
-export type EmployeeDayStatus = Status | "WEEKEND" | "UPCOMING" | "PENDING";
+export type EmployeeDayStatus =
+  | Status
+  | "WEEKEND"
+  | "UPCOMING"
+  | "PENDING"
+  | "AWAITING_REVIEW";
 
 export type EmployeeDayRecord = {
   date: string;
@@ -52,6 +57,8 @@ export type EmployeeDayRecord = {
   checkOutMethod: Method | null;
   checkInSupervisorName: string | null;
   checkOutSupervisorName: string | null;
+  checkInVerificationStatus: VerificationStatus | null;
+  checkOutVerificationStatus: VerificationStatus | null;
 };
 
 export type EmployeeReportSummary = {

@@ -15,7 +15,8 @@ export type Permission =
   | "reports:export"
   | "settings:read"
   | "settings:write"
-  | "kiosk:access";
+  | "kiosk:access"
+  | "attendance:review";
 
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   MANAGER: [
@@ -29,14 +30,17 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "settings:read",
     "settings:write",
     "kiosk:access",
+    "attendance:review",
   ],
   INQUIRY_CLERK: [
     "dashboard:view",
     "employees:read",
     "employees:create",
+    "employees:update",
     "reports:read",
     "settings:read",
     "kiosk:access",
+    "attendance:review",
   ],
 };
 
@@ -74,6 +78,11 @@ export const DASHBOARD_NAV_ITEMS: NavItemConfig[] = [
     href: "/dashboard/reports",
     label: "التقارير",
     permission: "reports:read",
+  },
+  {
+    href: "/dashboard/reviews",
+    label: "مراجعة الصور",
+    permission: "attendance:review",
   },
   {
     href: "/kiosk",

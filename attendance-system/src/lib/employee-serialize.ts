@@ -14,6 +14,8 @@ export const employeeListSelect = {
   customEndTime: true,
   isActive: true,
   hasFaceRegistered: true,
+  hasReferencePhoto: true,
+  referencePhotoUrl: true,
   faceDescriptorVersion: true,
   shift: { select: { name: true } },
 } as const;
@@ -30,6 +32,8 @@ export type EmployeeRecordForSerialize = {
   customEndTime: string | null;
   isActive: boolean;
   hasFaceRegistered: boolean;
+  hasReferencePhoto: boolean;
+  referencePhotoUrl: string | null;
   faceDescriptorVersion: number;
   shift: { name: string } | null;
 };
@@ -54,6 +58,8 @@ export function serializeEmployee(
     customEndTime: employee.customEndTime,
     isActive: employee.isActive,
     hasFace: employee.hasFaceRegistered,
+    hasReferencePhoto: employee.hasReferencePhoto,
+    referencePhotoUrl: employee.referencePhotoUrl,
     needsFaceReEnrollment: needsFaceReEnrollment(
       employee.faceDescriptorVersion,
       employee.hasFaceRegistered

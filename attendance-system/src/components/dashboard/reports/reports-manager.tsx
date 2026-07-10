@@ -176,7 +176,8 @@ function EmployeeReportDetail({
                       ? "bg-rose-500/5"
                       : day.status === "WEEKEND" ||
                           day.status === "UPCOMING" ||
-                          day.status === "PENDING"
+                          day.status === "PENDING" ||
+                          day.status === "AWAITING_REVIEW"
                         ? "bg-bg-elevated/40"
                         : undefined
                   }

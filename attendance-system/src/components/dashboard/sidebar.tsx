@@ -9,11 +9,16 @@ import {
   getDashboardNavItems,
   isDashboardNavActive,
 } from "@/lib/dashboard-nav";
+import { usePendingReviewCount } from "@/hooks/use-pending-review-count";
+import { PendingReviewsBadge } from "@/components/dashboard/pending-reviews-badge";
+
+const REVIEWS_HREF = "/dashboard/reviews";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
   const role = useUserRole();
   const navItems = getDashboardNavItems(role);
+  const pendingReviewCount = usePendingReviewCount();
 
   return (
     <aside className="fixed inset-y-0 start-0 z-30 hidden w-56 flex-col border-l border-bg-border bg-bg-sidebar lg:flex">
@@ -38,7 +43,12 @@ export function DashboardSidebar() {
               )}
             >
               <item.icon className="size-4 shrink-0" />
-              {item.label}
+              <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                <span>{item.label}</span>
+                {item.href === REVIEWS_HREF && (
+                  <PendingReviewsBadge count={pendingReviewCount} />
+                )}
+              </span>
             </Link>
           );
         })}

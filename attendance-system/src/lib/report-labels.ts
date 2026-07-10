@@ -6,4 +6,5 @@ export const dayStatusLabels: Record<EmployeeDayStatus, string> = {
   WEEKEND: "عطلة أسبوعية",
   UPCOMING: "لم يحن بعد",
   PENDING: "لم يُسجّل بعد",
+  AWAITING_REVIEW: "بانتظار التأكيد",
 };

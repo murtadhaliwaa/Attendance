@@ -79,7 +79,10 @@ export function useKioskAttendanceApi(mode: KioskMode) {
     [mode]
   );
 
-  const loadRoster = useCallback(async () => {
+  const loadRoster = useCallback(async (options?: { photoOnly?: boolean }) => {
+    const path = options?.photoOnly
+      ? "/api/employees/roster?for=photo"
+      : "/api/employees/roster";
     const { res, data } = await kioskJson<
       Array<{
         id: string;
@@ -87,7 +90,7 @@ export function useKioskAttendanceApi(mode: KioskMode) {
         employeeCode: string;
         department: string;
       }>
-    >("/api/employees/roster");
+    >(path);
 
     if (!res.ok) {
       throw new Error("فشل تحميل قائمة الموظفين");
@@ -127,11 +130,41 @@ export function useKioskAttendanceApi(mode: KioskMode) {
     []
   );
 
+  const submitPhotoAttendance = useCallback(
+    async (employeeId: string, shiftId: string, imageDataUrl: string) => {
+      const { res, data } = await kioskJson<
+        AttendanceResult & { error?: string; pending?: boolean }
+      >("/api/attendance/photo", {
+        method: "POST",
+        body: JSON.stringify({ employeeId, shiftId, imageDataUrl, mode }),
+      });
+
+      if (!res.ok) throw new Error(data.error ?? "فشل التسجيل");
+
+      todayStatusCacheRef.current.delete(employeeId);
+      return data;
+    },
+    [mode]
+  );
+
+  const loadShifts = useCallback(async () => {
+    const { res, data } = await kioskJson<
+      Array<{ id: string; name: string; startTime: string; endTime: string }>
+    >("/api/schedules/kiosk");
+
+    if (!res.ok) {
+      throw new Error("فشل تحميل الشفتات");
+    }
+    return data;
+  }, []);
+
   return {
     loadEmployees,
     loadRoster,
+    loadShifts,
     getTodayStatus,
     recordAttendance,
+    submitPhotoAttendance,
     submitEmergency,
     enrollEmployee,
     todayStatusCacheRef,

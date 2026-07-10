@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   FileBarChart,
+  ClipboardCheck,
   LayoutDashboard,
   Monitor,
   Settings,
@@ -21,6 +22,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/dashboard": LayoutDashboard,
   "/dashboard/employees": Users,
   "/dashboard/reports": FileBarChart,
+  "/dashboard/reviews": ClipboardCheck,
   "/kiosk": Monitor,
   "/dashboard/settings": Settings,
 };
