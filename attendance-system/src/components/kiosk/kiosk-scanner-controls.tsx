@@ -1,19 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Camera, KeyRound, Search, Send } from "lucide-react";
+import { Camera, KeyRound, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CameraFacingSelector } from "@/components/kiosk/camera-facing-selector";
+import { KioskEmployeePicker } from "@/components/kiosk/kiosk-employee-picker";
+import { KioskShiftPicker } from "@/components/kiosk/kiosk-shift-picker";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { formatShiftRangeLabel } from "@/lib/schedule-utils";
 import type {
   RosterEmployee,
   ShiftOption,
@@ -62,113 +55,56 @@ export function KioskScannerControls({
   onToggleEmergency,
   onSubmitEmergency,
 }: KioskScannerControlsProps) {
-  const [employeeSearch, setEmployeeSearch] = useState("");
-
-  const filteredRoster = useMemo(() => {
-    const query = employeeSearch.trim().toLowerCase();
-    if (!query) return roster;
-    return roster.filter(
-      (e) =>
-        e.name.toLowerCase().includes(query) ||
-        e.department.toLowerCase().includes(query)
-    );
-  }, [roster, employeeSearch]);
-
-  const selectedEmployeeLabel = useMemo(() => {
-    return roster.find((employee) => employee.id === selectedEmployeeId)?.name;
-  }, [roster, selectedEmployeeId]);
-
-  const selectedShiftLabel = useMemo(() => {
-    const shift = shifts.find((item) => item.id === selectedShiftId);
-    if (!shift) return undefined;
-    return `${shift.name} (${formatShiftRangeLabel(shift.startTime, shift.endTime)})`;
-  }, [shifts, selectedShiftId]);
-
-  const emergencyEmployeeLabel = useMemo(() => {
-    return roster.find((employee) => employee.id === emergencyEmployeeId)?.name;
-  }, [roster, emergencyEmployeeId]);
-
   return (
     <>
       <CameraFacingSelector compact className="mx-auto max-w-xs shrink-0" />
 
       {!showEmergency && (
-        <div className="shrink-0 space-y-2 rounded-lg border border-bg-border bg-bg-elevated p-2">
-          <p className="text-[11px] leading-snug text-text-secondary">
-            اختر اسمك والشفت، ثم التقط صورتك وأرسلها لمراجعة موظف الاستعلامات.
-          </p>
-
-          <div className="relative">
-            <Search className="absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-text-muted" />
-            <Input
-              aria-label="بحث عن موظف"
-              placeholder="ابحث بالاسم..."
-              value={employeeSearch}
-              onChange={(e) => setEmployeeSearch(e.target.value)}
-              className="h-9 pr-9 text-right"
+        <div className="shrink-0 space-y-3 rounded-xl border border-bg-border bg-bg-elevated/80 p-3">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-text-primary">١. اختر اسمك</p>
+            <KioskEmployeePicker
+              roster={roster}
+              value={selectedEmployeeId}
+              onChange={onEmployeeChange}
+              loading={rosterLoading}
+              isCheckin={isCheckin}
             />
           </div>
 
-          <Select
-            value={selectedEmployeeId}
-            onValueChange={(value) => onEmployeeChange(value ?? "")}
-            disabled={rosterLoading}
-          >
-            <SelectTrigger className="h-10 w-full">
-              <SelectValue
-                placeholder={
-                  rosterLoading ? "جاري تحميل الموظفين..." : "اختر اسمك"
-                }
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-text-primary">٢. اختر الشفت</p>
+            <KioskShiftPicker
+              shifts={shifts}
+              value={selectedShiftId}
+              onChange={onShiftChange}
+              isCheckin={isCheckin}
+            />
+          </div>
+
+          <div className="space-y-1.5 pt-1">
+            <p className="text-xs font-medium text-text-primary">
+              ٣. التقط صورتك وأرسلها
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="h-11 rounded-xl"
+                onClick={onCapturePreview}
+                disabled={submitting}
               >
-                {selectedEmployeeLabel}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {filteredRoster.map((employee) => (
-                <SelectItem key={employee.id} value={employee.id}>
-                  {employee.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={selectedShiftId}
-            onValueChange={(value) => onShiftChange(value ?? "")}
-            disabled={shifts.length === 0}
-          >
-            <SelectTrigger className="h-10 w-full">
-              <SelectValue placeholder="اختر الشفت">
-                {selectedShiftLabel}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {shifts.map((shift) => (
-                <SelectItem key={shift.id} value={shift.id}>
-                  {shift.name} ({formatShiftRangeLabel(shift.startTime, shift.endTime)})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              className="h-10"
-              onClick={onCapturePreview}
-              disabled={submitting}
-            >
-              <Camera className="size-4" />
-              التقاط صورة
-            </Button>
-            <Button
-              className={cn("h-10", accentActionClass)}
-              onClick={onSubmitPhoto}
-              disabled={submitting}
-            >
-              <Send className="size-4" />
-              إرسال للمراجعة
-            </Button>
+                <Camera className="size-4" />
+                التقاط صورة
+              </Button>
+              <Button
+                className={cn("h-11 rounded-xl", accentActionClass)}
+                onClick={onSubmitPhoto}
+                disabled={submitting}
+              >
+                <Send className="size-4" />
+                إرسال للمراجعة
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -176,7 +112,7 @@ export function KioskScannerControls({
       <div className="flex shrink-0 justify-center">
         <Button
           variant="outline"
-          className={cn("h-9 px-3 text-sm", accentActionClass)}
+          className={cn("h-9 rounded-xl px-3 text-sm", accentActionClass)}
           onClick={onToggleEmergency}
         >
           <KeyRound className="size-4" />
@@ -185,30 +121,21 @@ export function KioskScannerControls({
       </div>
 
       {showEmergency && (
-        <div className="shrink-0 space-y-2 rounded-lg border border-bg-border bg-bg-elevated p-2">
+        <div className="shrink-0 space-y-3 rounded-xl border border-bg-border bg-bg-elevated/80 p-3">
           <p className="text-[11px] leading-snug text-text-secondary">
             <strong>الرمز الطارئ:</strong> يختار مسؤول الشفت اسم الموظف ويُدخل
             رمزه الخاص لتسجيل {isCheckin ? "حضور" : "انصراف"} الموظف.
           </p>
 
-          <Select
+          <KioskEmployeePicker
+            roster={roster}
             value={emergencyEmployeeId}
-            onValueChange={(value) => onEmergencyEmployeeChange(value ?? "")}
-            disabled={rosterLoading}
-          >
-            <SelectTrigger className="h-10 w-full">
-              <SelectValue placeholder="اختر اسم الموظف">
-                {emergencyEmployeeLabel}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {roster.map((employee) => (
-                <SelectItem key={employee.id} value={employee.id}>
-                  {employee.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={onEmergencyEmployeeChange}
+            loading={rosterLoading}
+            placeholder="ابحث عن اسم الموظف..."
+            compact
+            isCheckin={isCheckin}
+          />
 
           <div className="flex items-center gap-2">
             <Input
@@ -217,11 +144,14 @@ export function KioskScannerControls({
               value={emergencyCode}
               onChange={(e) => onEmergencyCodeChange(e.target.value)}
               dir="ltr"
-              className="h-10 text-center"
+              className="h-11 rounded-xl text-center"
             />
             <Button
               variant="outline"
-              className={cn("h-10 shrink-0 rounded-lg px-5", accentActionClass)}
+              className={cn(
+                "h-11 shrink-0 rounded-xl px-5",
+                accentActionClass
+              )}
               onClick={onSubmitEmergency}
             >
               تأكيد
