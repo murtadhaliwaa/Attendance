@@ -29,13 +29,24 @@ function isLegacyServiceRoleJwt(key: string): boolean {
 
 function getStorageConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
+  if (!url) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL غير مُعد");
+  }
+
+  const projectRef = projectRefFromUrl(url);
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null;
+
+  if (hasS3Credentials()) {
+    return { url, key, projectRef };
+  }
+
+  if (!key) {
     throw new Error(
-      "تخزين الصور غير مُعد — أضف SUPABASE_SERVICE_ROLE_KEY في ملف البيئة"
+      "تخزين الصور غير مُعد — أضف مفاتيح S3 (SUPABASE_S3_ACCESS_KEY_ID و SUPABASE_S3_SECRET_ACCESS_KEY) في ملف البيئة"
     );
   }
-  return { url, key, projectRef: projectRefFromUrl(url) };
+
+  return { url, key, projectRef };
 }
 
 function hasS3Credentials(): boolean {
@@ -66,6 +77,12 @@ function getS3Client(projectRef: string): S3Client {
 
 function getStorageAdmin() {
   const { url, key } = getStorageConfig();
+
+  if (!key) {
+    throw new Error(
+      "مفاتيح S3 غير مُعدّة — من Supabase → Storage → S3 Access Keys أنشئ مفتاحاً وأضف SUPABASE_S3_ACCESS_KEY_ID و SUPABASE_S3_SECRET_ACCESS_KEY في .env.local"
+    );
+  }
 
   if (isNewSupabaseSecretKey(key)) {
     throw new Error(
@@ -200,7 +217,7 @@ export async function uploadEmployeePhoto(
     return path;
   }
 
-  if (isLegacyServiceRoleJwt(key)) {
+  if (key && isLegacyServiceRoleJwt(key)) {
     await uploadViaSupabaseRest(path, buffer, contentType);
     return path;
   }
