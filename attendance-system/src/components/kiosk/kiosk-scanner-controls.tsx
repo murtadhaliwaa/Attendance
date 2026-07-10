@@ -74,6 +74,20 @@ export function KioskScannerControls({
     );
   }, [roster, employeeSearch]);
 
+  const selectedEmployeeLabel = useMemo(() => {
+    return roster.find((employee) => employee.id === selectedEmployeeId)?.name;
+  }, [roster, selectedEmployeeId]);
+
+  const selectedShiftLabel = useMemo(() => {
+    const shift = shifts.find((item) => item.id === selectedShiftId);
+    if (!shift) return undefined;
+    return `${shift.name} (${formatShiftRangeLabel(shift.startTime, shift.endTime)})`;
+  }, [shifts, selectedShiftId]);
+
+  const emergencyEmployeeLabel = useMemo(() => {
+    return roster.find((employee) => employee.id === emergencyEmployeeId)?.name;
+  }, [roster, emergencyEmployeeId]);
+
   return (
     <>
       <CameraFacingSelector compact className="mx-auto max-w-xs shrink-0" />
@@ -105,7 +119,9 @@ export function KioskScannerControls({
                 placeholder={
                   rosterLoading ? "جاري تحميل الموظفين..." : "اختر اسمك"
                 }
-              />
+              >
+                {selectedEmployeeLabel}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {filteredRoster.map((employee) => (
@@ -122,7 +138,9 @@ export function KioskScannerControls({
             disabled={shifts.length === 0}
           >
             <SelectTrigger className="h-10 w-full">
-              <SelectValue placeholder="اختر الشفت" />
+              <SelectValue placeholder="اختر الشفت">
+                {selectedShiftLabel}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {shifts.map((shift) => (
@@ -179,7 +197,9 @@ export function KioskScannerControls({
             disabled={rosterLoading}
           >
             <SelectTrigger className="h-10 w-full">
-              <SelectValue placeholder="اختر اسم الموظف" />
+              <SelectValue placeholder="اختر اسم الموظف">
+                {emergencyEmployeeLabel}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {roster.map((employee) => (
