@@ -30,3 +30,4 @@ env.vercel.txt
 
 # prisma generated
 **/src/generated/prisma
+.env*
