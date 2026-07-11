@@ -35,7 +35,9 @@ export function KioskCameraView({
         dir="ltr"
         className={cn(
           "relative w-full shrink-0 overflow-hidden rounded-xl border-2 bg-black",
-          "aspect-[4/3] w-full max-h-[min(52dvh,380px)] lg:max-h-full lg:min-h-[240px] lg:flex-1",
+          // على الموبايل: ارتفاع صريح أكبر — aspect-[4/3] كان يقيّد الارتفاع بعرض الشاشة
+          "h-[min(50dvh,400px)] w-full",
+          "lg:aspect-[4/3] lg:h-auto lg:max-h-full lg:min-h-[240px] lg:flex-1",
           accentRing
         )}
       >
