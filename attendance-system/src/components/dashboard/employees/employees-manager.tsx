@@ -104,7 +104,6 @@ interface EmployeesManagerProps {
   departments: string[];
   departmentOptions: string[];
   positionOptions: string[];
-  suggestedEmergencyCode: string;
 }
 
 export function EmployeesManager({
@@ -113,7 +112,6 @@ export function EmployeesManager({
   departments,
   departmentOptions,
   positionOptions,
-  suggestedEmergencyCode,
 }: EmployeesManagerProps) {
   const router = useRouter();
   const canCreate = usePermission("employees:create");
@@ -611,7 +609,6 @@ export function EmployeesManager({
         shifts={shifts}
         departments={departmentOptions}
         positions={positionOptions}
-        suggestedEmergencyCode={suggestedEmergencyCode}
         onSuccess={refresh}
       />
 

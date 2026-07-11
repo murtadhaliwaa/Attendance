@@ -110,16 +110,10 @@ export function buildEmployeeReportRows(
     الحالة: dayStatusLabels[day.status],
     الحضور: day.checkIn ?? "—",
     "طريقة الحضور":
-      formatAttendanceMethodLabel({
-        method: day.checkInMethod,
-        supervisorName: day.checkInSupervisorName,
-      }) ?? "—",
+      formatAttendanceMethodLabel(day.checkInMethod) ?? "—",
     الانصراف: day.checkOut ?? "—",
     "طريقة الانصراف":
-      formatAttendanceMethodLabel({
-        method: day.checkOutMethod,
-        supervisorName: day.checkOutSupervisorName,
-      }) ?? "—",
+      formatAttendanceMethodLabel(day.checkOutMethod) ?? "—",
     التأخير:
       day.lateMinutes && day.lateMinutes > 0
         ? formatTotalLate(day.lateMinutes, format)

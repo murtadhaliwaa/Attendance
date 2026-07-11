@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireKioskAuth } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
-import { nextEmployeeCode, nextEmergencyCode } from "@/lib/employee-codes";
+import { nextEmployeeCode } from "@/lib/employee-codes";
 import { hasRealFaceDescriptor } from "@/lib/face-descriptor-utils";
 import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
@@ -158,9 +158,8 @@ export async function PUT(request: Request) {
       });
     }
 
-    const [employeeCode, emergencyCode, department] = await Promise.all([
+    const [employeeCode, department] = await Promise.all([
       nextEmployeeCode(),
-      nextEmergencyCode(),
       resolveEmployeeDepartment({ fallbackName: "عام" }),
     ]);
 
@@ -168,7 +167,6 @@ export async function PUT(request: Request) {
       data: {
         name,
         employeeCode,
-        emergencyCode,
         department: department.department,
         departmentId: department.departmentId,
         position: "موظف",

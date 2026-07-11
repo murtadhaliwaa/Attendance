@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { requireKioskAuth } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 
-// قائمة كل الموظفين النشطين (للاختيار في الرمز الطارئ على الكشك).
-// تشمل من لم يسجّل وجهه بعد، لأن الرمز الطارئ يعمل على الجميع.
+// قائمة الموظفين النشطين للكشك (مع فلترة الصورة المرجعية عند ?for=photo).
 export async function GET(request: Request) {
   const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;

@@ -181,7 +181,6 @@ async function main() {
       position,
       phone: `05${String(500000000 + num).slice(0, 9)}`,
       faceDescriptor: [],
-      emergencyCode: String(100000 + num),
       shiftId,
       isActive: index !== 87,
     };
@@ -217,7 +216,8 @@ async function main() {
     checkIn: Date | null;
     checkOut: Date | null;
     status: Status;
-    method: Method;
+    checkInMethod: Method;
+    checkOutMethod: Method;
     overtime?: number;
     notes?: string;
   }[] = [];
@@ -250,8 +250,8 @@ async function main() {
         checkOut = buildCheckOut(date, 18, 15);
         overtime = 120;
       } else if (index % 19 === 0 && dayOffset === 0) {
-        method = Method.EMERGENCY_CODE;
-        notes = "تسجيل عبر الرمز الطارئ";
+        method = Method.MANUAL;
+        notes = "تسجيل يدوي";
       }
 
       attendanceRecords.push({
@@ -260,7 +260,8 @@ async function main() {
         checkIn,
         checkOut,
         status,
-        method,
+        checkInMethod: method,
+        checkOutMethod: method,
         overtime,
         notes,
       });

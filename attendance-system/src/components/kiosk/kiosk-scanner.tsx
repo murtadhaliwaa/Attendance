@@ -38,11 +38,6 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     statusText,
     result,
     currentTime,
-    showEmergency,
-    emergencyCode,
-    setEmergencyCode,
-    emergencyEmployeeId,
-    setEmergencyEmployeeId,
     roster,
     shifts,
     rosterLoading,
@@ -53,8 +48,6 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     previewUrl,
     handleCapturePreview,
     handleSubmitPhoto,
-    handleEmergency,
-    toggleEmergency,
     retryCamera,
   } = scanner;
 
@@ -135,13 +128,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
 
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:max-w-md lg:shrink-0 lg:overflow-y-auto">
               <KioskScannerControls
-                isCheckin={isCheckin}
                 accentActionClass={accentActionClass}
-                showEmergency={showEmergency}
-                emergencyCode={emergencyCode}
-                onEmergencyCodeChange={setEmergencyCode}
-                emergencyEmployeeId={emergencyEmployeeId}
-                onEmergencyEmployeeChange={setEmergencyEmployeeId}
                 roster={roster}
                 shifts={shifts}
                 rosterLoading={rosterLoading}
@@ -152,8 +139,6 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 onCapturePreview={handleCapturePreview}
                 onSubmitPhoto={handleSubmitPhoto}
                 submitting={state === "processing"}
-                onToggleEmergency={toggleEmergency}
-                onSubmitEmergency={handleEmergency}
               />
             </div>
 

@@ -55,8 +55,6 @@ export type EmployeeDayRecord = {
   lateMinutes: number | null;
   checkInMethod: Method | null;
   checkOutMethod: Method | null;
-  checkInSupervisorName: string | null;
-  checkOutSupervisorName: string | null;
   checkInVerificationStatus: VerificationStatus | null;
   checkOutVerificationStatus: VerificationStatus | null;
 };

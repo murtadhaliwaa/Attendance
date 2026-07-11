@@ -14,7 +14,6 @@ export type EmployeeWriteFields = {
   position?: string;
   phone?: string | null;
   employeeCode?: string;
-  emergencyCode?: string;
   customEndTime?: string | null;
   isActive?: boolean;
   faceDescriptor?: number[];

@@ -42,7 +42,6 @@ import {
 const SCAN_INTERVAL_MS = 200;
 const SUCCESS_RESET_MS = 3000;
 const BLOCKED_RESET_MS = 5000;
-const EMERGENCY_RESET_MS = 4000;
 
 export type RosterEmployee = {
   id: string;
@@ -52,7 +51,7 @@ export type RosterEmployee = {
 };
 
 /**
- * كل منطق آلة حالة الكشك (الكاميرا، المسح، التعرف، التسجيل، الرمز الطارئ).
+ * كل منطق آلة حالة الكشك (الكاميرا، المسح، التعرف، التسجيل).
  * المكوّن المرئي يستهلك القيم فقط دون منطق.
  */
 export function useKioskScanner(mode: KioskMode) {
@@ -69,10 +68,8 @@ export function useKioskScanner(mode: KioskMode) {
   } = useKioskCamera();
   const {
     loadEmployees,
-    loadRoster,
     getTodayStatus,
     recordAttendance,
-    submitEmergency,
     enrollEmployee,
   } = useKioskAttendanceApi(mode);
 
@@ -91,12 +88,7 @@ export function useKioskScanner(mode: KioskMode) {
   const [verifyProgress, setVerifyProgress] = useState(0);
   const [employees, setEmployees] = useState<EmployeeFaceData[]>([]);
   const [result, setResult] = useState<AttendanceResult | null>(null);
-  const [showEmergency, setShowEmergency] = useState(false);
   const [showEnroll, setShowEnroll] = useState(false);
-  const [emergencyCode, setEmergencyCode] = useState("");
-  const [emergencyEmployeeId, setEmergencyEmployeeId] = useState("");
-  const [roster, setRoster] = useState<RosterEmployee[]>([]);
-  const [rosterLoading, setRosterLoading] = useState(false);
   const [enrollName, setEnrollName] = useState("");
   const [currentTime, setCurrentTime] = useState("");
   const [scanPhase, setScanPhaseState] = useState<ScanPhase>("idle");
@@ -220,8 +212,7 @@ export function useKioskScanner(mode: KioskMode) {
       state !== "scanning" ||
       isProcessingRef.current ||
       isScanningFrameRef.current ||
-      showEnroll ||
-      showEmergency
+      showEnroll
     )
       return;
 
@@ -361,7 +352,6 @@ export function useKioskScanner(mode: KioskMode) {
     employees,
     state,
     showEnroll,
-    showEmergency,
     mode,
     labels,
     videoRef,
@@ -372,30 +362,6 @@ export function useKioskScanner(mode: KioskMode) {
     setScanPhase,
     showUnknownFaceFeedback,
   ]);
-
-  const handleEmergency = useCallback(async () => {
-    if (!emergencyEmployeeId) {
-      toast.error("اختر اسم الموظف أولاً");
-      return;
-    }
-    if (!emergencyCode) {
-      toast.error("أدخل الرمز الطارئ الخاص بمسؤول الشفت");
-      return;
-    }
-    setState("processing");
-    try {
-      const data = await submitEmergency(emergencyEmployeeId, emergencyCode);
-      setResult(data);
-      setState("success");
-      setShowEmergency(false);
-      setEmergencyCode("");
-      setEmergencyEmployeeId("");
-      setTimeout(resetScanner, EMERGENCY_RESET_MS);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "رمز غير صحيح");
-      setState("scanning");
-    }
-  }, [emergencyEmployeeId, emergencyCode, resetScanner, submitEmergency]);
 
   const handleEnroll = useCallback(async () => {
     if (!enrollName.trim() || !videoRef.current) return;
@@ -450,29 +416,7 @@ export function useKioskScanner(mode: KioskMode) {
   const openEnroll = useCallback(() => {
     void loadEnrollmentFaceModels();
     setShowEnroll((prev) => !prev);
-    setShowEmergency(false);
   }, []);
-
-  const toggleEmergency = useCallback(() => {
-    setShowEmergency((prev) => {
-      const next = !prev;
-      if (next && roster.length === 0 && !rosterLoading) {
-        setRosterLoading(true);
-        loadRoster()
-          .then(setRoster)
-          .catch((error) => {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "فشل تحميل قائمة الموظفين"
-            );
-          })
-          .finally(() => setRosterLoading(false));
-      }
-      return next;
-    });
-    setShowEnroll(false);
-  }, [roster.length, rosterLoading, loadRoster]);
 
   useEffect(() => {
     updateClock();
@@ -544,15 +488,6 @@ export function useKioskScanner(mode: KioskMode) {
     recognizedName,
     result,
     currentTime,
-    showEmergency,
-    emergencyCode,
-    setEmergencyCode,
-    emergencyEmployeeId,
-    setEmergencyEmployeeId,
-    roster,
-    rosterLoading,
-    handleEmergency,
-    toggleEmergency,
     showEnroll,
     enrollName,
     setEnrollName,

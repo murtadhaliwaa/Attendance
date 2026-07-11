@@ -18,7 +18,6 @@ export type EmployeeRow = {
   department: string;
   position: string;
   phone: string | null;
-  emergencyCode: string;
   shiftId: string | null;
   shiftName: string | null;
   customEndTime: string | null;
@@ -41,7 +40,6 @@ export type EmployeeFormData = {
   department: string;
   position: string;
   phone: string;
-  emergencyCode: string;
   shiftId: string;
   customEndTime: string;
   isActive: boolean;
@@ -52,7 +50,6 @@ export const emptyEmployeeForm = (department = ""): EmployeeFormData => ({
   department,
   position: "",
   phone: "",
-  emergencyCode: "",
   shiftId: "",
   customEndTime: "",
   isActive: true,

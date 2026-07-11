@@ -197,7 +197,6 @@ function EmployeeReportDetail({
                       <TimeCell value={day.checkIn} />
                       <AttendanceMethodBadge
                         method={day.checkInMethod}
-                        supervisorName={day.checkInSupervisorName}
                       />
                     </div>
                   </TableCell>
@@ -206,7 +205,6 @@ function EmployeeReportDetail({
                       <TimeCell value={day.checkOut} />
                       <AttendanceMethodBadge
                         method={day.checkOutMethod}
-                        supervisorName={day.checkOutSupervisorName}
                       />
                     </div>
                   </TableCell>

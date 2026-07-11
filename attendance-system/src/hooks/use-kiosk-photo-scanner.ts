@@ -18,7 +18,6 @@ import { captureVideoFrame } from "@/lib/photo-capture";
 
 const SUCCESS_RESET_MS = 5000;
 const BLOCKED_RESET_MS = 5000;
-const EMERGENCY_RESET_MS = 4000;
 
 export type RosterEmployee = {
   id: string;
@@ -52,15 +51,11 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     loadShifts,
     getTodayStatus,
     submitPhotoAttendance,
-    submitEmergency,
   } = useKioskAttendanceApi(mode);
 
   const [state, setState] = useState<KioskState>("loading");
   const [statusText, setStatusText] = useState("جاري تشغيل الكاميرا...");
   const [result, setResult] = useState<AttendanceResult | null>(null);
-  const [showEmergency, setShowEmergency] = useState(false);
-  const [emergencyCode, setEmergencyCode] = useState("");
-  const [emergencyEmployeeId, setEmergencyEmployeeId] = useState("");
   const [roster, setRoster] = useState<RosterEmployee[]>([]);
   const [shifts, setShifts] = useState<ShiftOption[]>([]);
   const [rosterLoading, setRosterLoading] = useState(false);
@@ -206,34 +201,6 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     labels.subtitle,
   ]);
 
-  const handleEmergency = useCallback(async () => {
-    if (!emergencyEmployeeId) {
-      toast.error("اختر اسم الموظف أولاً");
-      return;
-    }
-    if (!emergencyCode) {
-      toast.error("أدخل الرمز الطارئ الخاص بمسؤول الشفت");
-      return;
-    }
-    setState("processing");
-    try {
-      const data = await submitEmergency(emergencyEmployeeId, emergencyCode);
-      setResult(data);
-      setState("success");
-      setShowEmergency(false);
-      setEmergencyCode("");
-      setEmergencyEmployeeId("");
-      setTimeout(resetScanner, EMERGENCY_RESET_MS);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "رمز غير صحيح");
-      setState("scanning");
-    }
-  }, [emergencyEmployeeId, emergencyCode, resetScanner, submitEmergency]);
-
-  const toggleEmergency = useCallback(() => {
-    setShowEmergency((v) => !v);
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
 
@@ -288,11 +255,6 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     statusText,
     result,
     currentTime,
-    showEmergency,
-    emergencyCode,
-    setEmergencyCode,
-    emergencyEmployeeId,
-    setEmergencyEmployeeId,
     roster,
     shifts,
     rosterLoading,
@@ -304,8 +266,6 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     setPreviewUrl,
     handleCapturePreview,
     handleSubmitPhoto,
-    handleEmergency,
-    toggleEmergency,
     retryCamera,
   };
 }

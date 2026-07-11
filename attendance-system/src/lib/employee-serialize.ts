@@ -9,7 +9,6 @@ export const employeeListSelect = {
   department: true,
   position: true,
   phone: true,
-  emergencyCode: true,
   shiftId: true,
   customEndTime: true,
   isActive: true,
@@ -27,7 +26,6 @@ export type EmployeeRecordForSerialize = {
   department: string;
   position: string;
   phone: string | null;
-  emergencyCode: string;
   shiftId: string | null;
   customEndTime: string | null;
   isActive: boolean;
@@ -52,7 +50,6 @@ export function serializeEmployee(
     department: employee.department,
     position: employee.position,
     phone: employee.phone,
-    emergencyCode: employee.emergencyCode,
     shiftId: employee.shiftId,
     shiftName: employee.shift?.name ?? null,
     customEndTime: employee.customEndTime,

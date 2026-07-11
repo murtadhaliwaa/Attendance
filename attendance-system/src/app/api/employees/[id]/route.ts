@@ -9,7 +9,6 @@ import {
 import { parseCustomEndTime, toEmployeeUncheckedUpdateInput } from "@/lib/employee-shift";
 import {
   ensureShiftExists,
-  validateEmergencyCode,
 } from "@/lib/employee-validation";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
 import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
@@ -83,7 +82,6 @@ export async function PUT(
       position?: string;
       phone?: string | null;
       employeeCode?: string;
-      emergencyCode?: string;
       shiftId?: string | null;
       customEndTime?: string | null;
       isActive?: boolean;
@@ -165,24 +163,6 @@ export async function PUT(
 
     if (body.phone !== undefined) {
       data.phone = String(body.phone).trim() || null;
-    }
-
-    if (body.emergencyCode !== undefined) {
-      const emergencyCode = String(body.emergencyCode).trim();
-      const emergencyCodeError = validateEmergencyCode(emergencyCode);
-      if (emergencyCodeError) {
-        return NextResponse.json({ error: emergencyCodeError }, { status: 400 });
-      }
-      const duplicate = await prisma.employee.findFirst({
-        where: { emergencyCode, NOT: { id: params.id } },
-      });
-      if (duplicate) {
-        return NextResponse.json(
-          { error: "الرمز الطارئ مستخدم مسبقاً" },
-          { status: 409 }
-        );
-      }
-      data.emergencyCode = emergencyCode;
     }
 
     if (body.shiftId !== undefined) {

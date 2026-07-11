@@ -283,8 +283,6 @@ export async function getEmployeeReport(
       checkOut: true,
       checkInMethod: true,
       checkOutMethod: true,
-      checkInSupervisorName: true,
-      checkOutSupervisorName: true,
       checkInVerificationStatus: true,
       checkOutVerificationStatus: true,
     },
@@ -328,8 +326,6 @@ export async function getEmployeeReport(
             lateMinutes: null,
             checkInMethod: record.checkInMethod,
             checkOutMethod: record.checkOutMethod,
-            checkInSupervisorName: record.checkInSupervisorName,
-            checkOutSupervisorName: record.checkOutSupervisorName,
             checkInVerificationStatus: record.checkInVerificationStatus,
             checkOutVerificationStatus: record.checkOutVerificationStatus,
           };
@@ -358,8 +354,6 @@ export async function getEmployeeReport(
           lateMinutes,
           checkInMethod: record.checkInMethod,
           checkOutMethod: record.checkOutMethod,
-          checkInSupervisorName: record.checkInSupervisorName,
-          checkOutSupervisorName: record.checkOutSupervisorName,
           checkInVerificationStatus: record.checkInVerificationStatus,
           checkOutVerificationStatus: record.checkOutVerificationStatus,
         };
@@ -375,8 +369,6 @@ export async function getEmployeeReport(
         lateMinutes: null,
         checkInMethod: null,
         checkOutMethod: null,
-        checkInSupervisorName: null,
-        checkOutSupervisorName: null,
         checkInVerificationStatus: null,
         checkOutVerificationStatus: null,
       };

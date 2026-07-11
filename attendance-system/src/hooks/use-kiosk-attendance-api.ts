@@ -98,22 +98,6 @@ export function useKioskAttendanceApi(mode: KioskMode) {
     return data;
   }, []);
 
-  const submitEmergency = useCallback(
-    async (employeeId: string, emergencyCode: string) => {
-      const { res, data } = await kioskJson<AttendanceResult & { error?: string }>(
-        "/api/attendance/emergency",
-        {
-          method: "POST",
-          body: JSON.stringify({ employeeId, emergencyCode, mode }),
-        }
-      );
-
-      if (!res.ok) throw new Error(data.error ?? "رمز غير صحيح");
-      return data;
-    },
-    [mode]
-  );
-
   const enrollEmployee = useCallback(
     async (name: string, descriptor: number[]) => {
       const { res, data } = await kioskJson<{ error?: string; message?: string }>(
@@ -165,7 +149,6 @@ export function useKioskAttendanceApi(mode: KioskMode) {
     getTodayStatus,
     recordAttendance,
     submitPhotoAttendance,
-    submitEmergency,
     enrollEmployee,
     todayStatusCacheRef,
   };

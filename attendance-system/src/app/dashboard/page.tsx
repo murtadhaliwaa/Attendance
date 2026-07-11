@@ -66,8 +66,6 @@ export default async function DashboardPage() {
         status: true,
         checkInMethod: true,
         checkOutMethod: true,
-        checkInSupervisorName: true,
-        checkOutSupervisorName: true,
         checkInVerificationStatus: true,
         checkOutVerificationStatus: true,
         employee: {
@@ -116,8 +114,6 @@ export default async function DashboardPage() {
         displayStatus === "LATE" || status === "LATE" ? lateMinutes : 0,
       checkInMethod: record.checkInMethod,
       checkOutMethod: record.checkOutMethod,
-      checkInSupervisorName: record.checkInSupervisorName,
-      checkOutSupervisorName: record.checkOutSupervisorName,
     };
   });
 
@@ -237,7 +233,6 @@ export default async function DashboardPage() {
                         />
                         <AttendanceMethodBadge
                           method={record.checkInMethod}
-                          supervisorName={record.checkInSupervisorName}
                         />
                       </div>
                       <div className="flex flex-col items-center gap-1 text-center">
@@ -251,7 +246,6 @@ export default async function DashboardPage() {
                         />
                         <AttendanceMethodBadge
                           method={record.checkOutMethod}
-                          supervisorName={record.checkOutSupervisorName}
                         />
                       </div>
                     </div>
@@ -286,7 +280,6 @@ export default async function DashboardPage() {
                             />
                             <AttendanceMethodBadge
                               method={record.checkInMethod}
-                              supervisorName={record.checkInSupervisorName}
                             />
                           </div>
                         </TableCell>
@@ -301,7 +294,6 @@ export default async function DashboardPage() {
                             />
                             <AttendanceMethodBadge
                               method={record.checkOutMethod}
-                              supervisorName={record.checkOutSupervisorName}
                             />
                           </div>
                         </TableCell>

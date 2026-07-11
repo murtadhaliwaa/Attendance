@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/api-auth";
-import { nextEmployeeCode, nextEmergencyCode } from "@/lib/employee-codes";
+import { nextEmployeeCode } from "@/lib/employee-codes";
 import { resolveEmployeeDepartment } from "@/lib/department-resolve";
 import {
   employeeListSelect,
@@ -9,7 +9,6 @@ import {
 import { parseCustomEndTime } from "@/lib/employee-shift";
 import {
   ensureShiftExists,
-  validateEmergencyCode,
 } from "@/lib/employee-validation";
 import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
 import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
@@ -87,7 +86,6 @@ export async function POST(request: Request) {
     const department = String(body.department ?? "").trim();
     const position = String(body.position ?? "").trim();
     const phone = String(body.phone ?? "").trim() || null;
-    let emergencyCode = String(body.emergencyCode ?? "").trim();
     const shiftId = String(body.shiftId ?? "").trim() || null;
     const isActive = body.isActive !== false;
     let customEndTime: string | null = null;
@@ -122,30 +120,12 @@ export async function POST(request: Request) {
 
     const employeeCode = await nextEmployeeCode();
 
-    if (!emergencyCode) {
-      emergencyCode = await nextEmergencyCode();
-    }
-    const emergencyCodeError = validateEmergencyCode(emergencyCode);
-    if (emergencyCodeError) {
-      return NextResponse.json({ error: emergencyCodeError }, { status: 400 });
-    }
-
     const existingCode = await prisma.employee.findUnique({
       where: { employeeCode },
     });
     if (existingCode) {
       return NextResponse.json(
         { error: `رقم الموظف ${employeeCode} مستخدم مسبقاً` },
-        { status: 409 }
-      );
-    }
-
-    const existingEmergency = await prisma.employee.findFirst({
-      where: { emergencyCode },
-    });
-    if (existingEmergency) {
-      return NextResponse.json(
-        { error: "الرمز الطارئ مستخدم مسبقاً" },
         { status: 409 }
       );
     }
@@ -214,7 +194,6 @@ export async function POST(request: Request) {
         departmentId: resolvedDepartment.departmentId,
         position,
         phone,
-        emergencyCode,
         customEndTime,
         isActive,
         faceDescriptor: hasFace ? faceDescriptor : [],

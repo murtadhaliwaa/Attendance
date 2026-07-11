@@ -1,5 +1,4 @@
 import { EmployeesManager } from "@/components/dashboard/employees/employees-manager";
-import { nextEmergencyCode } from "@/lib/employee-codes";
 import {
   employeeListSelect,
   serializeEmployee,
@@ -13,18 +12,12 @@ import { POSITIONS } from "@/lib/employee-types";
 
 export default async function EmployeesPage() {
   await requirePagePermission("employees:read");
-  const [
-    employees,
-    shifts,
-    suggestedEmergencyCode,
-    departmentLists,
-  ] = await Promise.all([
+  const [employees, shifts, departmentLists] = await Promise.all([
     prisma.employee.findMany({
       orderBy: { name: "asc" },
       select: employeeListSelect,
     }),
     getShiftOptions(),
-    nextEmergencyCode(),
     getEmployeeDepartmentLists(),
   ]);
 
@@ -45,7 +38,6 @@ export default async function EmployeesPage() {
       departments={departmentLists.filters}
       departmentOptions={departmentLists.formOptions}
       positionOptions={positionOptions}
-      suggestedEmergencyCode={suggestedEmergencyCode}
     />
   );
 }

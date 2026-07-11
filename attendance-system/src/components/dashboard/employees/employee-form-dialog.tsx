@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, Camera, KeyRound, Loader2, UserRound } from "lucide-react";
+import { Briefcase, Camera, Loader2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +46,6 @@ interface EmployeeFormDialogProps {
   shifts: ShiftOption[];
   departments: string[];
   positions: string[];
-  suggestedEmergencyCode?: string;
   onSuccess: () => void;
 }
 
@@ -56,7 +55,6 @@ function toFormData(employee: EmployeeRow): EmployeeFormData {
     department: employee.department,
     position: employee.position,
     phone: employee.phone ?? "",
-    emergencyCode: employee.emergencyCode,
     shiftId: employee.shiftId ?? "",
     customEndTime: employee.customEndTime ?? "",
     isActive: employee.isActive,
@@ -94,12 +92,6 @@ function FormSection({
   );
 }
 
-function FieldHint({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-xs leading-relaxed text-text-secondary">{children}</p>
-  );
-}
-
 export function EmployeeFormDialog({
   open,
   onOpenChange,
@@ -107,7 +99,6 @@ export function EmployeeFormDialog({
   shifts,
   departments,
   positions,
-  suggestedEmergencyCode,
   onSuccess,
 }: EmployeeFormDialogProps) {
   const isEdit = !!employee;
@@ -132,12 +123,11 @@ export function EmployeeFormDialog({
     } else {
       setForm({
         ...emptyEmployeeForm(""),
-        emergencyCode: suggestedEmergencyCode ?? "",
         shiftId: shifts[0]?.id ?? "",
       });
       setReferencePhotoDataUrl(null);
     }
-  }, [open, employee, suggestedEmergencyCode, shifts, departments]);
+  }, [open, employee, shifts, departments]);
 
   function updateField<K extends keyof EmployeeFormData>(
     key: K,
@@ -165,7 +155,6 @@ export function EmployeeFormDialog({
         department: form.department.trim(),
         position: form.position.trim(),
         phone: form.phone.trim(),
-        emergencyCode: form.emergencyCode.trim(),
         shiftId: form.shiftId,
         customEndTime: form.customEndTime.trim() || null,
         ...(referencePhotoDataUrl
@@ -216,32 +205,6 @@ export function EmployeeFormDialog({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
           <form id="employee-form" onSubmit={handleSubmit} className="space-y-4">
-            <FormSection
-              title="الرمز الطارئ"
-              description="6 أرقام — يُستخدم في الكشك عند تعذّر التقاط الصورة"
-              icon={KeyRound}
-            >
-              <div className="space-y-1.5">
-                <Label htmlFor="emergencyCode">الرمز الطارئ</Label>
-                <Input
-                  id="emergencyCode"
-                  dir="ltr"
-                  className="h-9 font-mono tracking-wider"
-                  placeholder="100089"
-                  maxLength={6}
-                  inputMode="numeric"
-                  value={form.emergencyCode}
-                  onChange={(e) =>
-                    updateField(
-                      "emergencyCode",
-                      e.target.value.replace(/\D/g, "")
-                    )
-                  }
-                />
-                <FieldHint>اتركه فارغاً ليُولَّد تلقائياً</FieldHint>
-              </div>
-            </FormSection>
-
             <FormSection title="البيانات الشخصية" icon={UserRound}>
               <div className="space-y-3">
                 <div className="space-y-1.5">
