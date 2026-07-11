@@ -26,10 +26,10 @@ export function KioskScannerHeader({
   const { enabled: tabletMode } = useKioskTabletMode();
 
   return (
-    <div className="mx-auto mb-2 w-full max-w-4xl shrink-0">
+    <div className="mx-auto mb-1 w-full max-w-4xl shrink-0 sm:mb-2">
       <div
         dir="ltr"
-        className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 py-1 sm:gap-3"
+        className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1.5 py-0.5 sm:gap-3 sm:py-1"
       >
         <div className="flex justify-start">
           {tabletMode ? (
@@ -52,7 +52,7 @@ export function KioskScannerHeader({
           <p
             dir="ltr"
             className={cn(
-              "truncate rounded-xl border px-4 py-1.5 text-center font-mono text-lg font-bold tracking-wide tabular-nums shadow-sm sm:px-5 sm:py-2 sm:text-xl",
+              "truncate rounded-lg border px-3 py-1 text-center font-mono text-base font-bold tracking-wide tabular-nums shadow-sm sm:rounded-xl sm:px-5 sm:py-2 sm:text-xl",
               accentClockClass
             )}
           >
@@ -72,10 +72,10 @@ export function KioskScannerHeader({
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-base font-bold text-text-primary sm:text-lg">
+              <h1 className="truncate text-sm font-bold text-text-primary sm:text-lg">
                 {labels.title}
               </h1>
-              <p className="truncate text-xs text-text-secondary sm:text-sm">
+              <p className="hidden truncate text-xs text-text-secondary sm:block sm:text-sm">
                 {labels.subtitle}
               </p>
             </div>

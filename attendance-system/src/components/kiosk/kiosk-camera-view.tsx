@@ -34,8 +34,8 @@ export function KioskCameraView({
       <div
         dir="ltr"
         className={cn(
-          "relative w-full overflow-hidden rounded-xl border-2 bg-black",
-          "aspect-[4/3] max-h-full min-h-[200px] flex-1",
+          "relative w-full shrink-0 overflow-hidden rounded-xl border-2 bg-black",
+          "aspect-[4/3] w-full max-h-[min(40dvh,280px)] lg:max-h-full lg:min-h-[200px] lg:flex-1",
           accentRing
         )}
       >

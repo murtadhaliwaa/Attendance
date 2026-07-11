@@ -210,6 +210,7 @@ export function KioskShell({
   const isScanner =
     pathname === "/kiosk/checkin" || pathname === "/kiosk/checkout";
   const immersiveTablet = tabletMode && isScanner;
+  const hideMobileNav = isScanner;
 
   return (
     <div
@@ -223,7 +224,7 @@ export function KioskShell({
         className={cn(
           "flex flex-1 flex-col",
           isScanner ? "min-h-0 overflow-hidden" : "min-h-screen",
-          !immersiveTablet && "pb-16 lg:pb-0"
+          !hideMobileNav && "pb-16 lg:pb-0"
         )}
       >
         <main
@@ -235,7 +236,7 @@ export function KioskShell({
           {children}
         </main>
       </div>
-      {!immersiveTablet &&
+      {!hideMobileNav &&
         (loggedIn ? <KioskMobileNavLoggedIn /> : <KioskMobileNavGuest />)}
     </div>
   );

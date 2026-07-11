@@ -19,6 +19,7 @@ import { KioskResultPanel } from "@/components/kiosk/kiosk-result-panel";
 import { KioskScannerHeader } from "@/components/kiosk/kiosk-scanner-header";
 import { KioskCameraView } from "@/components/kiosk/kiosk-camera-view";
 import { KioskScannerControls } from "@/components/kiosk/kiosk-scanner-controls";
+import { CameraFacingSelector } from "@/components/kiosk/camera-facing-selector";
 import { cn } from "@/lib/utils";
 
 interface KioskScannerProps {
@@ -79,7 +80,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
         : labels.action;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden px-3 py-2">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden px-2 py-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] sm:px-3 sm:py-2">
       <KioskScannerHeader
         isCheckin={isCheckin}
         labels={labels}
@@ -90,10 +91,10 @@ export function KioskScanner({ mode }: KioskScannerProps) {
 
       <Card
         size="sm"
-        className={`mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-1 py-2 ${accentBorder}`}
+        className={`mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-0 py-1 sm:gap-1 sm:py-2 ${accentBorder}`}
       >
-        <CardHeader className="shrink-0 gap-0.5 px-3 py-0">
-          <CardTitle className="flex items-center justify-center gap-2 text-base font-semibold sm:text-lg">
+        <CardHeader className="shrink-0 gap-0 px-2 py-0 sm:gap-0.5 sm:px-3">
+          <CardTitle className="flex items-center justify-center gap-1.5 text-sm font-semibold sm:gap-2 sm:text-lg">
             {state === "loading" && <Loader2 className="size-5 animate-spin" />}
             {state === "scanning" && <Camera className="size-5 text-blue-primary" />}
             {state === "processing" && (
@@ -112,18 +113,14 @@ export function KioskScanner({ mode }: KioskScannerProps) {
             )}
             {cardTitle}
           </CardTitle>
-          <CardDescription className="text-center text-sm font-medium text-text-primary">
+          <CardDescription className="hidden text-center text-sm font-medium text-text-primary sm:block">
             {statusText}
           </CardDescription>
         </CardHeader>
 
-        <CardContent
-          className={`flex min-h-0 flex-1 flex-col gap-1.5 px-3 pb-2 ${
-            showEmergency ? "overflow-y-auto" : "overflow-hidden"
-          }`}
-        >
-          <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:items-stretch">
-            <div className="flex min-h-[min(38vh,240px)] shrink-0 flex-col gap-1.5 lg:min-h-0 lg:min-w-0 lg:flex-1 lg:shrink">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 pb-1.5 sm:gap-1.5 sm:px-3 sm:pb-2 lg:overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col gap-1 sm:gap-2 lg:flex-row lg:items-stretch">
+            <div className="flex shrink-0 flex-col gap-1 lg:min-h-0 lg:min-w-0 lg:flex-1 lg:shrink">
               <KioskCameraView
                 videoRef={videoRef}
                 state={state}
@@ -133,9 +130,10 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 previewUrl={previewUrl}
                 onRetryCamera={retryCamera}
               />
+              <CameraFacingSelector compact className="shrink-0 lg:mx-auto lg:max-w-xs" />
             </div>
 
-            <div className="flex min-h-0 min-w-0 flex-col gap-1.5 overflow-y-auto lg:max-w-md lg:flex-1 lg:shrink-0">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:max-w-md lg:shrink-0 lg:overflow-y-auto">
               <KioskScannerControls
                 isCheckin={isCheckin}
                 accentActionClass={accentActionClass}
