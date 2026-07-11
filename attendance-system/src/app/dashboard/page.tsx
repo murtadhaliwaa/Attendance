@@ -89,6 +89,11 @@ export default async function DashboardPage() {
   );
   const todayAttendanceCount = countedToday.length;
   const lateToday = countedToday.filter((record) => record.status === "LATE").length;
+  const pendingReviewToday = todayAttendances.filter(
+    (record) =>
+      record.checkInMethod === "PHOTO" &&
+      record.checkInVerificationStatus === "PENDING"
+  ).length;
   const unreadAlerts = recentAlerts.length;
 
   const attendanceRows = recentRecords.map((record) => {
@@ -117,7 +122,10 @@ export default async function DashboardPage() {
     };
   });
 
-  const absentEstimate = Math.max(employeeCount - todayAttendanceCount, 0);
+  const absentEstimate = Math.max(
+    employeeCount - todayAttendanceCount - pendingReviewToday,
+    0
+  );
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
@@ -142,6 +150,11 @@ export default async function DashboardPage() {
           <p className="mt-0.5 text-lg font-semibold text-rose-200 sm:text-xl">
             {absentEstimate}
           </p>
+          {pendingReviewToday > 0 && (
+            <p className="mt-0.5 text-[10px] text-text-muted">
+              {pendingReviewToday} قيد المراجعة
+            </p>
+          )}
         </div>
         <div className="rounded-xl border border-bg-border bg-bg-card px-3 py-2.5 sm:px-4 sm:py-3">
           <p className="text-[11px] text-text-muted sm:text-xs">تنبيه</p>

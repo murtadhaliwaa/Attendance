@@ -43,7 +43,8 @@ export async function GET(request: Request) {
       },
     },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-    take: scope === "pending" ? 100 : 200,
+    // الطابور المعلّق قابل للتنفيذ ويجب أن يظهر كاملاً؛ سجل المراجعات (all) محدود.
+    ...(scope === "pending" ? {} : { take: 200 }),
   });
 
   const items = [];

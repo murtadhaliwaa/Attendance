@@ -194,7 +194,15 @@ export async function submitPhotoCheckOut(input: {
   );
 
   let status = existing.status;
-  const employeeWithShift = { ...employee, shift };
+  // حساب الانصراف المبكر يعتمد على شفت الحضور المحفوظ (checkInShiftId)،
+  // لا على الشفت المختار عند الانصراف، حتى لا يختلف الحساب إذا اختُلف الشفت.
+  const checkInShift = existing.checkInShiftId
+    ? await prisma.workSchedule.findUnique({
+        where: { id: existing.checkInShiftId },
+        select: employeeShiftSelect,
+      })
+    : null;
+  const employeeWithShift = { ...employee, shift: checkInShift ?? shift };
   const resolvedShift = await resolveEmployeeShiftAsync(
     employeeWithShift,
     existing.checkIn

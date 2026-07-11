@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -260,6 +261,53 @@ export async function getSignedPhotoUrl(path: string): Promise<string> {
     throw new Error("تعذر إنشاء رابط الصورة");
   }
   return data.signedUrl;
+}
+
+async function deleteViaS3(projectRef: string, path: string): Promise<void> {
+  const client = getS3Client(projectRef);
+  await client.send(
+    new DeleteObjectCommand({
+      Bucket: PHOTO_BUCKET,
+      Key: path,
+    })
+  );
+}
+
+async function deleteViaSupabaseRest(path: string): Promise<void> {
+  const supabase = getStorageAdmin();
+  const { error } = await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+  if (error) {
+    const message = error.message.toLowerCase();
+    // الملف غير موجود = نجاح فعلي (سبق حذفه)
+    if (message.includes("not found") || message.includes("404")) {
+      return;
+    }
+    throw new Error(error.message);
+  }
+}
+
+/** حذف ملف صورة من التخزين. لا يحذف الصور المرجعية إذا مُرّر مسارها بالخطأ من منطق التنظيف. */
+export async function deleteEmployeePhoto(path: string): Promise<void> {
+  const cleaned = path.trim();
+  if (!cleaned || cleaned.includes("..")) {
+    throw new Error("مسار الصورة غير صالح");
+  }
+
+  const { projectRef, key } = getStorageConfig();
+
+  if (hasS3Credentials()) {
+    await deleteViaS3(projectRef, cleaned);
+    return;
+  }
+
+  if (key && isLegacyServiceRoleJwt(key)) {
+    await deleteViaSupabaseRest(cleaned);
+    return;
+  }
+
+  throw new Error(
+    "إعداد تخزين الصور غير مكتمل. أضف مفاتيح S3 من Supabase → Storage → S3 Access Keys إلى .env.local"
+  );
 }
 
 export async function ensurePhotoBucket(): Promise<void> {
