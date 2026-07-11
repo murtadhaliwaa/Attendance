@@ -35,7 +35,7 @@ export function KioskCameraView({
         dir="ltr"
         className={cn(
           "relative w-full shrink-0 overflow-hidden rounded-xl border-2 bg-black",
-          "aspect-[4/3] w-full max-h-[min(40dvh,280px)] lg:max-h-full lg:min-h-[200px] lg:flex-1",
+          "aspect-[4/3] w-full max-h-[min(52dvh,380px)] lg:max-h-full lg:min-h-[240px] lg:flex-1",
           accentRing
         )}
       >
