@@ -22,10 +22,8 @@ export type EmployeeRow = {
   shiftName: string | null;
   customEndTime: string | null;
   isActive: boolean;
-  hasFace: boolean;
   hasReferencePhoto: boolean;
   referencePhotoUrl: string | null;
-  needsFaceReEnrollment?: boolean;
 };
 
 export type ShiftOption = {

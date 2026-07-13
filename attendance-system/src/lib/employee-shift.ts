@@ -11,13 +11,14 @@ export const employeeShiftSelect = {
 export type EmployeeWriteFields = {
   name?: string;
   department?: string;
+  departmentId?: string | null;
   position?: string;
   phone?: string | null;
   employeeCode?: string;
   customEndTime?: string | null;
   isActive?: boolean;
-  faceDescriptor?: number[];
-  hasFaceRegistered?: boolean;
+  referencePhotoUrl?: string | null;
+  hasReferencePhoto?: boolean;
   shiftId?: string | null;
 };
 

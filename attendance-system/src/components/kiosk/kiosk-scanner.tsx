@@ -46,8 +46,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     selectedShiftId,
     setSelectedShiftId,
     previewUrl,
-    handleCapturePreview,
-    handleSubmitPhoto,
+    handleCaptureAndSubmit,
     retryCamera,
   } = scanner;
 
@@ -69,7 +68,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     state === "success" && result
       ? result.employeeName
       : state === "processing"
-        ? "جاري الإرسال..."
+        ? "جاري التقاط الصورة وإرسالها..."
         : labels.action;
 
   return (
@@ -136,8 +135,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 onEmployeeChange={setSelectedEmployeeId}
                 selectedShiftId={selectedShiftId}
                 onShiftChange={setSelectedShiftId}
-                onCapturePreview={handleCapturePreview}
-                onSubmitPhoto={handleSubmitPhoto}
+                onCaptureAndSubmit={handleCaptureAndSubmit}
                 submitting={state === "processing"}
               />
             </div>

@@ -6,13 +6,11 @@ import {
   employeeListSelect,
   serializeEmployee,
 } from "@/lib/employee-serialize";
-import { parseCustomEndTime, toEmployeeUncheckedUpdateInput } from "@/lib/employee-shift";
 import {
-  ensureShiftExists,
-} from "@/lib/employee-validation";
-import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
-import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
-import { isValidFaceDescriptor } from "@/lib/face-verify-server";
+  parseCustomEndTime,
+  toEmployeeUncheckedUpdateInput,
+} from "@/lib/employee-shift";
+import { ensureShiftExists } from "@/lib/employee-validation";
 import { uploadEmployeePhoto } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 
@@ -85,47 +83,9 @@ export async function PUT(
       shiftId?: string | null;
       customEndTime?: string | null;
       isActive?: boolean;
-      faceDescriptor?: number[];
-      hasFaceRegistered?: boolean;
-      faceDescriptorVersion?: number;
       referencePhotoUrl?: string | null;
       hasReferencePhoto?: boolean;
     } = {};
-
-    if (body.clearFace === true) {
-      data.faceDescriptor = [];
-      data.hasFaceRegistered = false;
-      data.faceDescriptorVersion = CURRENT_FACE_DESCRIPTOR_VERSION;
-    }
-
-    if (body.faceDescriptor !== undefined) {
-      if (!isValidFaceDescriptor(body.faceDescriptor)) {
-        return NextResponse.json(
-          { error: "بصمة الوجه غير صالحة. أعد التقاطها من الكاميرا" },
-          { status: 400 }
-        );
-      }
-
-      if (body.forceFace !== true) {
-        const duplicate = await findEmployeeByFaceDescriptor(
-          body.faceDescriptor,
-          params.id,
-          "duplicate"
-        );
-        if (duplicate) {
-          return NextResponse.json(
-            {
-              error: `بصمة الوجه مسجّلة مسبقاً للموظف ${duplicate.name} (${duplicate.employeeCode})`,
-            },
-            { status: 409 }
-          );
-        }
-      }
-
-      data.faceDescriptor = body.faceDescriptor;
-      data.hasFaceRegistered = true;
-      data.faceDescriptorVersion = CURRENT_FACE_DESCRIPTOR_VERSION;
-    }
 
     if (body.name !== undefined) {
       const name = String(body.name).trim();

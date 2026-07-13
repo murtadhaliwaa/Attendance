@@ -1,5 +1,6 @@
 import type { KioskMode } from "@/lib/kiosk-types";
 import type { VerificationStatus } from "@prisma/client";
+import { MAX_PHOTO_SUBMIT_ATTEMPTS } from "@/lib/photo-attendance-limits";
 
 export type KioskState =
   | "loading"
@@ -35,25 +36,9 @@ export interface TodayStatus {
   employeeName: string;
   checkInVerificationStatus?: VerificationStatus | null;
   checkOutVerificationStatus?: VerificationStatus | null;
+  checkInPhotoAttempts?: number;
+  checkOutPhotoAttempts?: number;
 }
-
-export interface MatchStreak {
-  employeeId: string;
-  count: number;
-  name: string;
-}
-
-export type ScanPhase = "idle" | "detecting" | "matching" | "unknown";
-
-export const UNKNOWN_FACE_MESSAGE =
-  "ربما أنك موظف جديد وغير مسجّل، أو أن النظام لم يتعرف عليك — حاول مجدداً، أو سجّل عبر «موظف جديد».";
-
-export const SPOOF_FACE_MESSAGE =
-  "يبدو أنك تستخدم صورة أو شاشة. قف بوجهك الحقيقي أمام الكاميرا وحرّك رأسك قليلاً.";
-
-export const UNKNOWN_FACE_HOLD_MS = 5000;
-
-export const SPOOF_FACE_HOLD_MS = 4000;
 
 export function getBlockReason(
   mode: KioskMode,
@@ -65,6 +50,10 @@ export function getBlockReason(
   if (mode === "checkin") {
     if (!today.hasCheckIn) return null;
     if (checkInStatus === "REJECTED") return null;
+    if (checkInStatus === "PENDING") {
+      const used = Math.max(today.checkInPhotoAttempts ?? 1, 1);
+      if (used < MAX_PHOTO_SUBMIT_ATTEMPTS) return null;
+    }
     return "already_checkin";
   }
 
@@ -73,6 +62,10 @@ export function getBlockReason(
 
   if (!today.hasCheckOut) return null;
   if (checkOutStatus === "REJECTED") return null;
+  if (checkOutStatus === "PENDING") {
+    const used = Math.max(today.checkOutPhotoAttempts ?? 1, 1);
+    if (used < MAX_PHOTO_SUBMIT_ATTEMPTS) return null;
+  }
   return "already_done";
 }
 
@@ -84,7 +77,11 @@ export function blockMessage(
 ): string {
   if (reason === "already_checkin") {
     if (today.checkInVerificationStatus === "PENDING") {
-      return `أنت ${employeeName}، طلب حضورك قيد المراجعة — انتظر تأكيد موظف الاستعلامات`;
+      const used = Math.max(today.checkInPhotoAttempts ?? 1, 1);
+      if (used >= MAX_PHOTO_SUBMIT_ATTEMPTS) {
+        return `أنت ${employeeName}، وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر تأكيد موظف الاستعلامات`;
+      }
+      return `أنت ${employeeName}، طلب حضورك قيد المراجعة — يمكنك إعادة الإرسال أو انتظار التأكيد`;
     }
     return `أنت ${employeeName}، حضورك مسجّل مسبقاً (${today.checkInTime ?? ""})`;
   }
@@ -95,7 +92,11 @@ export function blockMessage(
     return `أنت ${employeeName}، سجّل حضورك أولاً من صفحة الحضور`;
   }
   if (today.checkOutVerificationStatus === "PENDING") {
-    return `أنت ${employeeName}، طلب انصرافك قيد المراجعة — انتظر تأكيد موظف الاستعلامات`;
+    const used = Math.max(today.checkOutPhotoAttempts ?? 1, 1);
+    if (used >= MAX_PHOTO_SUBMIT_ATTEMPTS) {
+      return `أنت ${employeeName}، وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر تأكيد موظف الاستعلامات`;
+    }
+    return `أنت ${employeeName}، طلب انصرافك قيد المراجعة — يمكنك إعادة الإرسال أو انتظار التأكيد`;
   }
   return `أنت ${employeeName}، انصرافك مسجّل مسبقاً (${today.checkOutTime ?? ""})`;
 }

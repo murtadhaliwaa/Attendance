@@ -7,8 +7,14 @@ import {
 } from "@/lib/attendance-utils";
 import { resolveEmployeeShiftAsync } from "@/lib/attendance-shift";
 import { employeeShiftSelect } from "@/lib/employee-shift";
-import { uploadEmployeePhoto } from "@/lib/photo-storage";
+import {
+  deleteEmployeePhoto,
+  uploadEmployeePhoto,
+} from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
+import { MAX_PHOTO_SUBMIT_ATTEMPTS } from "@/lib/photo-attendance-limits";
+
+export { MAX_PHOTO_SUBMIT_ATTEMPTS };
 
 export class PhotoAttendanceError extends Error {
   constructor(
@@ -51,6 +57,29 @@ async function getEmployeeForPhoto(employeeId: string, shiftId: string) {
   return { employee, shift };
 }
 
+async function replaceStoredPhoto(
+  previousPath: string | null | undefined,
+  nextPath: string
+) {
+  if (!previousPath || previousPath === nextPath) return;
+  try {
+    await deleteEmployeePhoto(previousPath);
+  } catch {
+    // تجاهل فشل حذف الصورة القديمة — لا يمنع الإرسال الجديد
+  }
+}
+
+function attemptsMessage(
+  eventLabel: string,
+  attempt: number
+): string {
+  const remaining = MAX_PHOTO_SUBMIT_ATTEMPTS - attempt;
+  if (remaining <= 0) {
+    return `تم إرسال طلب ${eventLabel} (المحاولة ${attempt} من ${MAX_PHOTO_SUBMIT_ATTEMPTS}) — بانتظار التأكيد، ولا يمكن إرسال صورة إضافية`;
+  }
+  return `تم إرسال طلب ${eventLabel} (المحاولة ${attempt} من ${MAX_PHOTO_SUBMIT_ATTEMPTS}) — يمكنك إعادة الإرسال ${remaining} مرة قبل انتهاء المراجعة`;
+}
+
 export async function submitPhotoCheckIn(input: {
   employeeId: string;
   shiftId: string;
@@ -68,17 +97,24 @@ export async function submitPhotoCheckIn(input: {
     where: { employeeId_date: { employeeId: employee.id, date: today } },
   });
 
+  let nextAttempts = 1;
+
   if (existing?.checkIn) {
     const verification = existing.checkInVerificationStatus;
     if (verification === VerificationStatus.APPROVED) {
       throw new PhotoAttendanceError("تم تأكيد حضورك لهذا اليوم", 409);
     }
     if (verification === VerificationStatus.PENDING) {
-      throw new PhotoAttendanceError(
-        "طلب حضورك قيد المراجعة — انتظر تأكيد موظف الاستعلامات",
-        409
-      );
+      const used = Math.max(existing.checkInPhotoAttempts, 1);
+      if (used >= MAX_PHOTO_SUBMIT_ATTEMPTS) {
+        throw new PhotoAttendanceError(
+          `وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر مراجعة موظف الاستعلامات`,
+          409
+        );
+      }
+      nextAttempts = used + 1;
     }
+    // REJECTED أو بدون تحقق → إعادة من المحاولة 1
   }
 
   const photoPath = await uploadEmployeePhoto(
@@ -87,6 +123,8 @@ export async function submitPhotoCheckIn(input: {
     input.imageDataUrl,
     dateKey
   );
+
+  await replaceStoredPhoto(existing?.checkInPhotoUrl, photoPath);
 
   const employeeWithShift = { ...employee, shift };
   const resolvedShift = await resolveEmployeeShiftAsync(employeeWithShift, now);
@@ -108,6 +146,7 @@ export async function submitPhotoCheckIn(input: {
       status,
       checkInMethod: Method.PHOTO,
       checkInPhotoUrl: photoPath,
+      checkInPhotoAttempts: nextAttempts,
       checkInShiftId: input.shiftId,
       checkInVerificationStatus: VerificationStatus.PENDING,
     },
@@ -116,6 +155,7 @@ export async function submitPhotoCheckIn(input: {
       status,
       checkInMethod: Method.PHOTO,
       checkInPhotoUrl: photoPath,
+      checkInPhotoAttempts: nextAttempts,
       checkInShiftId: input.shiftId,
       checkInVerificationStatus: VerificationStatus.PENDING,
       checkInRejectionReason: null,
@@ -126,13 +166,15 @@ export async function submitPhotoCheckIn(input: {
   });
 
   return {
-    message: `${employee.name}: تم إرسال طلب الحضور — بانتظار تأكيد موظف الاستعلامات`,
+    message: `${employee.name}: ${attemptsMessage("الحضور", nextAttempts)}`,
     employeeName: employee.name,
     action: "checkin" as const,
     time: formatTimeAr(now),
     status: attendance.status,
     department: employee.department,
     pending: true,
+    attempt: nextAttempts,
+    maxAttempts: MAX_PHOTO_SUBMIT_ATTEMPTS,
   };
 }
 
@@ -173,16 +215,22 @@ export async function submitPhotoCheckOut(input: {
     );
   }
 
+  let nextAttempts = 1;
+
   if (existing.checkOut) {
     const verification = existing.checkOutVerificationStatus;
     if (verification === VerificationStatus.APPROVED) {
       throw new PhotoAttendanceError("تم تأكيد انصرافك لهذا اليوم", 409);
     }
     if (verification === VerificationStatus.PENDING) {
-      throw new PhotoAttendanceError(
-        "طلب انصرافك قيد المراجعة — انتظر تأكيد موظف الاستعلامات",
-        409
-      );
+      const used = Math.max(existing.checkOutPhotoAttempts, 1);
+      if (used >= MAX_PHOTO_SUBMIT_ATTEMPTS) {
+        throw new PhotoAttendanceError(
+          `وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر مراجعة موظف الاستعلامات`,
+          409
+        );
+      }
+      nextAttempts = used + 1;
     }
   }
 
@@ -193,9 +241,9 @@ export async function submitPhotoCheckOut(input: {
     dateKey
   );
 
+  await replaceStoredPhoto(existing.checkOutPhotoUrl, photoPath);
+
   let status = existing.status;
-  // حساب الانصراف المبكر يعتمد على شفت الحضور المحفوظ (checkInShiftId)،
-  // لا على الشفت المختار عند الانصراف، حتى لا يختلف الحساب إذا اختُلف الشفت.
   const checkInShift = existing.checkInShiftId
     ? await prisma.workSchedule.findUnique({
         where: { id: existing.checkInShiftId },
@@ -222,6 +270,7 @@ export async function submitPhotoCheckOut(input: {
       status,
       checkOutMethod: Method.PHOTO,
       checkOutPhotoUrl: photoPath,
+      checkOutPhotoAttempts: nextAttempts,
       checkOutShiftId: input.shiftId,
       checkOutVerificationStatus: VerificationStatus.PENDING,
       checkOutRejectionReason: null,
@@ -232,13 +281,15 @@ export async function submitPhotoCheckOut(input: {
   });
 
   return {
-    message: `${employee.name}: تم إرسال طلب الانصراف — بانتظار تأكيد موظف الاستعلامات`,
+    message: `${employee.name}: ${attemptsMessage("الانصراف", nextAttempts)}`,
     employeeName: employee.name,
     action: "checkout" as const,
     time: formatTimeAr(now),
     status: attendance.status,
     department: employee.department,
     pending: true,
+    attempt: nextAttempts,
+    maxAttempts: MAX_PHOTO_SUBMIT_ATTEMPTS,
   };
 }
 
@@ -290,6 +341,8 @@ export async function reviewPhotoAttendance(input: {
         checkInReviewedAt: new Date(),
         checkInReviewedById: input.reviewerId,
         checkInReviewedByName: input.reviewerName,
+        // بعد الرفض يمكن البدء بمحاولات جديدة
+        ...(input.action === "reject" ? { checkInPhotoAttempts: 0 } : {}),
       }
     : {
         checkOutVerificationStatus: newStatus,
@@ -298,6 +351,7 @@ export async function reviewPhotoAttendance(input: {
         checkOutReviewedAt: new Date(),
         checkOutReviewedById: input.reviewerId,
         checkOutReviewedByName: input.reviewerName,
+        ...(input.action === "reject" ? { checkOutPhotoAttempts: 0 } : {}),
       };
 
   await prisma.attendance.update({

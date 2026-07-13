@@ -1,13 +1,12 @@
 # نظام الحضور والانصراف
 
-نظام عربي (RTL) لتسجيل حضور وانصراف الموظفين بالتعرف على الوجه، مع لوحة تحكم وتقارير.
+نظام عربي (RTL) لتسجيل حضور وانصراف الموظفين بالصورة مع مراجعة موظف الاستعلامات، ولوحة تحكم وتقارير.
 
 ## التقنيات
 
 - **Next.js 14** · React 18 · TypeScript
-- **Supabase** — مصادقة + PostgreSQL
+- **Supabase** — مصادقة + PostgreSQL + تخزين الصور
 - **Prisma 7** — ORM
-- **@vladmandic/human** — كشف وجه + بصمة **1024-d** (محرك واحد في المتصفح)
 - **Vercel** — نشر الإنتاج
 
 ## البدء السريع
@@ -20,7 +19,6 @@ npm run dev
 cd attendance-system
 npm install
 cp .env.example .env.local   # ثم املأ القيم
-npm run models:download      # نماذج Human محلياً (~9 MB)
 npm run dev
 ```
 
@@ -31,24 +29,18 @@ npm run dev
 | الأمر | الوظيفة |
 |-------|---------|
 | `npm run build` | بناء إنتاج |
-| `npm run models:download` | نسخ نماذج Human إلى `public/models/human/` |
-| `npm run test:face-v2` | اختبار بصمة 1024-d + API الكiosk |
 | `npm run db:seed` | بيانات تجريبية |
 | `npm run db:clear` | مسح كل البيانات |
 | `npm run auth:setup-production` | حسابات الإدارة |
 | `npm run db:backfill-departments` | ربط `departmentId` بعد migration |
-| `npm run db:backfill-face-versions` | تعيين إصدار البصمة (v1/v2) |
+| `npm run storage:cleanup-photos` | تنظيف صور الحضور القديمة |
 | `npm run env:validate` | التحقق من `.env` |
 
-## التعرف على الوجه (Human 1024-d)
+## طريقة العمل
 
-| البند | التفاصيل |
-|-------|----------|
-| المحرك | `@vladmandic/human` — `src/lib/face-engine/human-engine.ts` |
-| البصمة | 1024 عنصر (`faceDescriptorVersion = 2`) |
-| النماذج | `blazeface` · `facemesh` · `faceres` في `public/models/human/` |
-| التحميل | محلي من `/models/human/` — **لا يحتاج إنترنت على التابلت بعد `models:download`** |
-| البصمات القديمة | 128-d (v1) — يجب إعادة تسجيل الوجه من لوحة التحكم أو الكiosk |
+1. يُسجَّل لكل موظف **صورة مرجعية** من لوحة التحكم.
+2. في الكشك يختار الموظف الشفت واسمه ثم يلتقط صورة للحضور/الانصراف.
+3. يصل الطلب إلى صفحة المراجعات؛ يؤكد أو يرفض موظف الاستعلامات بعد مقارنة الصورة بالمرجعية.
 
 ## المتغيرات البيئية
 
@@ -56,7 +48,8 @@ npm run dev
 
 - `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `DATABASE_URL` (pooler) · `DIRECT_URL` (migrations)
-- `KIOSK_API_KEY` — حماية API الكشك (يُستخدم في الخادم فقط؛ المتصفح يحصل على جلسة HttpOnly عبر `/kiosk`)
+- `KIOSK_API_KEY` — حماية API الكشك
+- `CRON_SECRET` — لحماية مهمة تنظيف الصور
 - `UPSTASH_REDIS_REST_URL` · `UPSTASH_REDIS_REST_TOKEN` — اختياري؛ rate limit موزع في الإنتاج
 
 ## الأدوار
@@ -64,7 +57,7 @@ npm run dev
 | الحساب | الدور |
 |--------|-------|
 | `hr@company.com` | مدير — صلاحيات كاملة |
-| `inquiry@company.com` | استعلامات — عرض + إضافة موظف |
+| `inquiry@company.com` | استعلامات — عرض + إضافة موظف + مراجعة الصور |
 
 إعداد: `npm run auth:setup-production`
 
@@ -74,25 +67,17 @@ npm run dev
 |--------|--------|
 | `/login` | تسجيل الدخول |
 | `/dashboard` | لوحة التحكم |
-| `/kiosk/setup` | إعداد التابلت (شاشة كاملة) |
-| `/kiosk/checkin` | حضور بالوجه |
-| `/kiosk/checkout` | انصراف بالوجه |
-
-## التوثيق التقني
-
-مرجع شامل للمطورين: [`../تقارير/`](../تقارير/)
-
-- [مرجع النظام](../تقارير/00-مرجع-النظام-الشامل.md)
-- [التعرف على الوجه](../تقارير/الخصائص/تطويرات/02-التعرف-على-الوجه.md)
-- [دليل إضافة ميزة](../تقارير/الخصائص/الهيكلية-الصحيحة/دليل-إضافة-ميزة-جديدة.md)
+| `/dashboard/reviews` | مراجعة صور الحضور/الانصراف |
+| `/kiosk/setup` | إعداد التابلت |
+| `/kiosk/checkin` | حضور بالصورة |
+| `/kiosk/checkout` | انصراف بالصورة |
 
 ## هيكل المشروع
 
 ```
 attendance-system/
-├── src/app/              # صفحات + API
-├── src/lib/face-engine/  # Human 1024-d
-├── prisma/               # مخطط قاعدة البيانات
-├── public/models/human/  # نماذج Human (بعد models:download)
-└── scripts/              # صيانة وإعداد
+├── src/app/       # صفحات + API
+├── src/lib/       # منطق الحضور بالصورة والتخزين
+├── prisma/        # مخطط قاعدة البيانات
+└── scripts/       # صيانة وإعداد
 ```

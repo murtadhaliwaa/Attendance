@@ -19,9 +19,6 @@ model Employee {
   departmentRef  Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   position       String
   phone          String?
-  faceDescriptor    Float[]
-  faceDescriptorVersion Int           @default(2)
-  hasFaceRegistered Boolean       @default(false)
   referencePhotoUrl String?
   hasReferencePhoto Boolean       @default(false)
   shiftId        String?
@@ -38,7 +35,6 @@ model Employee {
   @@index([departmentId])
   @@index([name])
   @@index([isActive, shiftId])
-  @@index([isActive, hasFaceRegistered])
   @@index([isActive, hasReferencePhoto])
 }
 
@@ -50,11 +46,13 @@ model Attendance {
   checkIn    DateTime?
   checkOut   DateTime?
   status     Status    @default(PRESENT)
-  // طريقة التسجيل لكل حدث على حدة (قد يحضر بالوجه وينصرف بالرمز الطارئ أو العكس).
+  // طريقة التسجيل لكل حدث (صورة بمراجعة، يدوي، أو سجلات قديمة بالوجه).
   checkInMethod          Method?
   checkOutMethod         Method?
   checkInPhotoUrl        String?
   checkOutPhotoUrl       String?
+  checkInPhotoAttempts   Int       @default(0)
+  checkOutPhotoAttempts  Int       @default(0)
   checkInShiftId         String?
   checkOutShiftId        String?
   checkInVerificationStatus  VerificationStatus?

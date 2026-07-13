@@ -180,7 +180,6 @@ async function main() {
       department,
       position,
       phone: `05${String(500000000 + num).slice(0, 9)}`,
-      faceDescriptor: [],
       shiftId,
       isActive: index !== 87,
     };
@@ -235,7 +234,7 @@ async function main() {
       let checkOut = buildCheckOut(date, 16, 5 + (index % 10));
       let overtime: number | undefined;
       let notes: string | undefined;
-      let method: Method = Method.FACE;
+      let method: Method = Method.PHOTO;
 
       if (index % 17 === 0 && dayOffset < 3) {
         status = Status.LATE;

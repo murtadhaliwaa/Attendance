@@ -9,7 +9,6 @@ import {
   Pencil,
   UserX,
   UserCheck,
-  RotateCcw,
   UserMinus,
   Trash2,
   LogIn,
@@ -136,9 +135,6 @@ export function EmployeesManager({
     null
   );
   const [deleteTarget, setDeleteTarget] = useState<EmployeeRow | null>(null);
-  const [clearFaceTarget, setClearFaceTarget] = useState<EmployeeRow | null>(
-    null
-  );
   const [attendanceTarget, setAttendanceTarget] = useState<{
     employee: EmployeeRow;
     action: AttendanceAction;
@@ -239,26 +235,6 @@ export function EmployeesManager({
       patchEmployee(employee.id, { isActive: nextActive });
       toast.success(data.message);
     }, `toggle-${employee.id}`);
-  }
-
-  async function clearFace(employee: EmployeeRow) {
-    await runAction(async () => {
-      const res = await fetch(`/api/employees/${employee.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clearFace: true }),
-      });
-      const data = await parseJsonResponse<{ message?: string; error?: string }>(
-        res
-      );
-      if (!res.ok) throw new Error(data.error ?? "فشل مسح بصمة الوجه");
-      patchEmployee(employee.id, {
-        hasFace: false,
-        needsFaceReEnrollment: false,
-      });
-      toast.success(`تم مسح بصمة وجه ${employee.name}. سجّل الوجه من صفحة الحضور والانصراف`);
-      setClearFaceTarget(null);
-    }, `face-${employee.id}`);
   }
 
   async function deactivateEmployee(employee: EmployeeRow) {
@@ -474,14 +450,6 @@ export function EmployeesManager({
                                   {employee.isActive ? <UserX /> : <UserCheck />}
                                   {employee.isActive ? "إيقاف مؤقت" : "تفعيل"}
                                 </DropdownMenuItem>
-                                {employee.hasFace && (
-                                  <DropdownMenuItem
-                                    onClick={() => setClearFaceTarget(employee)}
-                                  >
-                                    <RotateCcw />
-                                    مسح بصمة الوجه
-                                  </DropdownMenuItem>
-                                )}
                                 {employee.isActive && (
                                   <>
                                     <DropdownMenuSeparator />
@@ -657,39 +625,6 @@ export function EmployeesManager({
               </DialogFooter>
             </>
           )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={!!clearFaceTarget}
-        onOpenChange={(open) => !open && setClearFaceTarget(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>مسح بصمة الوجه</DialogTitle>
-            <DialogDescription>
-              هل تريد مسح بصمة وجه {clearFaceTarget?.name}؟ سيحتاج الموظف إلى
-              تسجيل وجهه من جديد في الحضور والانصراف.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mx-0 mb-0 shrink-0 flex-row justify-end gap-2 border-t-0 bg-transparent p-0 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => setClearFaceTarget(null)}
-              disabled={!!actionLoading}
-            >
-              إلغاء
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={!!actionLoading}
-              onClick={() =>
-                clearFaceTarget && clearFace(clearFaceTarget)
-              }
-            >
-              تأكيد المسح
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

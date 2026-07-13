@@ -106,13 +106,11 @@ export const config = {
     "/admin/:path*",
     "/login",
     "/kiosk/:path*",
-    // تجديد جلسة Supabase قبل معالجات API الخاصة بلوحة التحكم (بدونها قد
-    // يفشل face-match وغيره بـ 401 بعد انتهاء التوكن أو أثناء عمليات طويلة).
+    // تجديد جلسة Supabase قبل معالجات API الخاصة بلوحة التحكم.
     "/api/employees/:path*",
     "/api/reports/:path*",
     "/api/departments/:path*",
     "/api/schedules/:path*",
-    "/api/supervisors/:path*",
     "/api/alerts/:path*",
   ],
 };

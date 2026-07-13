@@ -17,7 +17,13 @@ export async function GET(request: Request) {
         ...(forPhoto ? { hasReferencePhoto: true } : {}),
       },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, employeeCode: true, department: true },
+      select: {
+        id: true,
+        name: true,
+        employeeCode: true,
+        department: true,
+        shiftId: true,
+      },
     });
     return NextResponse.json(employees);
   } catch {

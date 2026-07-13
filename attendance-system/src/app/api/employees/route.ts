@@ -7,12 +7,7 @@ import {
   serializeEmployee,
 } from "@/lib/employee-serialize";
 import { parseCustomEndTime } from "@/lib/employee-shift";
-import {
-  ensureShiftExists,
-} from "@/lib/employee-validation";
-import { findEmployeeByFaceDescriptor } from "@/lib/face-match-employee";
-import { CURRENT_FACE_DESCRIPTOR_VERSION } from "@/lib/face-descriptor-version";
-import { isValidFaceDescriptor } from "@/lib/face-verify-server";
+import { ensureShiftExists } from "@/lib/employee-validation";
 import { uploadEmployeePhoto } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 
@@ -143,43 +138,12 @@ export async function POST(request: Request) {
       departmentName: department,
     });
 
-    const faceDescriptor = body.faceDescriptor;
-    const hasFace =
-      faceDescriptor !== undefined && isValidFaceDescriptor(faceDescriptor);
-
-    if (
-      faceDescriptor !== undefined &&
-      faceDescriptor !== null &&
-      !hasFace
-    ) {
-      return NextResponse.json(
-        { error: "بصمة الوجه غير صالحة. أعد التقاطها من الكاميرا" },
-        { status: 400 }
-      );
-    }
-
-    if (hasFace && body.forceFace !== true) {
-      const duplicate = await findEmployeeByFaceDescriptor(
-        faceDescriptor,
-        undefined,
-        "duplicate"
-      );
-      if (duplicate) {
-        return NextResponse.json(
-          {
-            error: `بصمة الوجه مسجّلة مسبقاً للموظف ${duplicate.name} (${duplicate.employeeCode})`,
-          },
-          { status: 409 }
-        );
-      }
-    }
-
     const referencePhotoDataUrl =
       typeof body.referencePhotoDataUrl === "string"
         ? body.referencePhotoDataUrl.trim()
         : "";
 
-    if (!referencePhotoDataUrl && !hasFace) {
+    if (!referencePhotoDataUrl) {
       return NextResponse.json(
         { error: "الصورة المرجعية مطلوبة لتسجيل الموظف" },
         { status: 400 }
@@ -196,34 +160,29 @@ export async function POST(request: Request) {
         phone,
         customEndTime,
         isActive,
-        faceDescriptor: hasFace ? faceDescriptor : [],
-        faceDescriptorVersion: hasFace ? CURRENT_FACE_DESCRIPTOR_VERSION : 2,
-        hasFaceRegistered: hasFace,
         shiftId,
       },
       select: employeeListSelect,
     });
 
     let savedEmployee = employee;
-    if (referencePhotoDataUrl) {
-      try {
-        const photoPath = await uploadEmployeePhoto(
-          employee.id,
-          "reference",
-          referencePhotoDataUrl
-        );
-        savedEmployee = await prisma.employee.update({
-          where: { id: employee.id },
-          data: {
-            referencePhotoUrl: photoPath,
-            hasReferencePhoto: true,
-          },
-          select: employeeListSelect,
-        });
-      } catch (uploadError) {
-        await prisma.employee.delete({ where: { id: employee.id } });
-        throw uploadError;
-      }
+    try {
+      const photoPath = await uploadEmployeePhoto(
+        employee.id,
+        "reference",
+        referencePhotoDataUrl
+      );
+      savedEmployee = await prisma.employee.update({
+        where: { id: employee.id },
+        data: {
+          referencePhotoUrl: photoPath,
+          hasReferencePhoto: true,
+        },
+        select: employeeListSelect,
+      });
+    } catch (uploadError) {
+      await prisma.employee.delete({ where: { id: employee.id } });
+      throw uploadError;
     }
 
     return NextResponse.json(

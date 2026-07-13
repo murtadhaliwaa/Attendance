@@ -24,6 +24,7 @@ export type RosterEmployee = {
   name: string;
   employeeCode: string;
   department: string;
+  shiftId: string | null;
 };
 
 export type ShiftOption = {
@@ -119,38 +120,42 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     [mode, resetScanner]
   );
 
-  const handleCapturePreview = useCallback(() => {
-    if (!videoRef.current) return;
-    const frame = captureVideoFrame(videoRef.current);
-    if (!frame) {
-      toast.error("تعذر التقاط الصورة — تأكد من الكاميرا");
-      return;
-    }
-    setPreviewUrl(frame);
-    setStatusText("راجع الصورة ثم اضغط «إرسال للمراجعة»");
-  }, [videoRef]);
-
-  const handleSubmitPhoto = useCallback(async () => {
-    if (!selectedEmployeeId) {
-      toast.error("اختر اسم الموظف");
-      return;
-    }
+  const handleCaptureAndSubmit = useCallback(async () => {
     if (!selectedShiftId) {
       toast.error("اختر الشفت");
       return;
     }
-
-    let imageDataUrl = previewUrl;
-    if (!imageDataUrl && videoRef.current) {
-      imageDataUrl = captureVideoFrame(videoRef.current);
-    }
-    if (!imageDataUrl) {
-      toast.error("التقط صورة أولاً");
+    if (!selectedEmployeeId) {
+      toast.error("اختر اسم الموظف");
       return;
     }
 
+    const selectedEmployee = roster.find(
+      (employee) => employee.id === selectedEmployeeId
+    );
+    if (
+      selectedEmployee &&
+      selectedEmployee.shiftId &&
+      selectedEmployee.shiftId !== selectedShiftId
+    ) {
+      toast.error("الموظف لا ينتمي إلى الشفت المختار");
+      return;
+    }
+
+    if (!videoRef.current) {
+      toast.error("الكاميرا غير جاهزة");
+      return;
+    }
+
+    const imageDataUrl = captureVideoFrame(videoRef.current);
+    if (!imageDataUrl) {
+      toast.error("تعذر التقاط الصورة — تأكد من الكاميرا");
+      return;
+    }
+
+    setPreviewUrl(imageDataUrl);
     setState("processing");
-    setStatusText("جاري إرسال الصورة...");
+    setStatusText("جاري التقاط الصورة وإرسالها...");
 
     try {
       const today = await getTodayStatus(selectedEmployeeId);
@@ -173,7 +178,7 @@ export function useKioskPhotoScanner(mode: KioskMode) {
       setState("success");
       setStatusText(data.message);
       setSelectedEmployeeId("");
-      setSelectedShiftId("");
+      // الإبقاء على الشفت المختار لتسريع تسجيل الموظف التالي في نفس الشفت
       setPreviewUrl(null);
       setTimeout(resetScanner, SUCCESS_RESET_MS);
     } catch (error) {
@@ -190,7 +195,6 @@ export function useKioskPhotoScanner(mode: KioskMode) {
   }, [
     selectedEmployeeId,
     selectedShiftId,
-    previewUrl,
     videoRef,
     getTodayStatus,
     roster,
@@ -264,8 +268,7 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     setSelectedShiftId,
     previewUrl,
     setPreviewUrl,
-    handleCapturePreview,
-    handleSubmitPhoto,
+    handleCaptureAndSubmit,
     retryCamera,
   };
 }

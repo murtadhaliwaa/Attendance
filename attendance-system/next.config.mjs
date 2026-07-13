@@ -7,7 +7,6 @@ const appDir = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
-    serverComponentsExternalPackages: ["@vladmandic/human"],
   },
   compiler: {
     removeConsole:
@@ -17,17 +16,6 @@ const nextConfig = {
   },
   async headers() {
     return [
-      {
-        // نماذج التعرف على الوجه (~9MB) ثابتة — نخزّنها بقوة ليكون التحميل
-        // البطيء لمرة واحدة فقط، ثم فوري في كل تشغيل لاحق للكشك.
-        source: "/models/human/:path*",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, stale-while-revalidate=86400",
-          },
-        ],
-      },
       {
         source: "/sw.js",
         headers: [
