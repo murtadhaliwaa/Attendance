@@ -52,6 +52,11 @@ export function KioskScannerControls({
       .sort((a, b) => a.name.localeCompare(b.name, "ar"));
   }, [roster, selectedShiftId]);
 
+  const unassignedCount = useMemo(
+    () => roster.filter((employee) => !employee.shiftId).length,
+    [roster]
+  );
+
   const filteredRoster = useMemo(() => {
     const query = employeeSearch.trim().toLowerCase();
     if (!query) return shiftEmployees;
@@ -151,7 +156,9 @@ export function KioskScannerControls({
                 </p>
               ) : filteredRoster.length === 0 ? (
                 <p className="px-2 py-3 text-center text-sm text-text-muted">
-                  لا يوجد موظف لهذا الشفت
+                  {employeeSearch.trim()
+                    ? "لا توجد نتائج للبحث"
+                    : "لا يوجد موظف لهذا الشفت"}
                 </p>
               ) : (
                 filteredRoster.map((employee) => (
@@ -163,9 +170,15 @@ export function KioskScannerControls({
             </SelectContent>
           </Select>
           {selectedShiftId && !rosterLoading && (
-            <p className="text-[10px] text-text-muted sm:text-[11px]">
-              {shiftEmployees.length} موظف في هذا الشفت
-            </p>
+            <div className="space-y-0.5 text-[10px] text-text-muted sm:text-[11px]">
+              <p>{shiftEmployees.length} موظف في هذا الشفت</p>
+              {unassignedCount > 0 && (
+                <p className="text-amber-200/90">
+                  {unassignedCount} بلا شفت معيّن — عيّن الشفت من إدارة
+                  الموظفين ليظهروا هنا
+                </p>
+              )}
+            </div>
           )}
         </div>
 

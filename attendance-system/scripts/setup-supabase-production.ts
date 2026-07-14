@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { PrismaClient, Role } from "@prisma/client";
 import path from "path";
+import { resolveAuthSetupPassword } from "./auth-setup-password";
 
 const projectRoot = path.resolve(__dirname, "..");
 config({ path: path.join(projectRoot, ".env.production.local") });
@@ -13,8 +14,7 @@ config({ path: path.join(projectRoot, ".env") });
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const defaultPassword =
-  process.env.AUTH_SETUP_PASSWORD ?? "Admin@123456";
+const defaultPassword = resolveAuthSetupPassword();
 
 const PRODUCTION_USERS = [
   {
@@ -156,9 +156,11 @@ async function main() {
   console.log(`        http://localhost:3000/**`);
   console.log(`        https://your-domain.vercel.app/**`);
   console.log(`        https://${projectRef}.supabase.co/**`);
-  console.log("\n🔑 بيانات الدخول الافتراضية (غيّرها فوراً في الإنتاج):");
-  console.log(`   كلمة المرور: ${defaultPassword}`);
+  console.log("\n🔑 الحسابات:");
   PRODUCTION_USERS.forEach((u) => console.log(`   - ${u.email}`));
+  console.log(
+    "   كلمة المرور = قيمة AUTH_SETUP_PASSWORD (احتفظ بها بأمان، ولا تضعها في Vercel Runtime إلا عند الحاجة)"
+  );
   console.log("\n✅ SystemUser + Auth جاهزان في قاعدة البيانات");
 }
 

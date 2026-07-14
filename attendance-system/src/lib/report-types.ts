@@ -18,6 +18,7 @@ export type WeeklyEmployeeSummary = {
   late: number;
   earlyLeave: number;
   absent: number;
+  awaitingReview: number;
   workingDays: number;
   lateDetails: string;
   lateDays: {

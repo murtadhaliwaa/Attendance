@@ -12,7 +12,7 @@ export function useKioskAttendanceApi(mode: KioskMode) {
 
   const getTodayStatus = useCallback(async (employeeId: string) => {
     const cached = todayStatusCacheRef.current.get(employeeId);
-    if (cached && Date.now() - cached.ts < 8000) {
+    if (cached && Date.now() - cached.ts < 2000) {
       return cached.data;
     }
 

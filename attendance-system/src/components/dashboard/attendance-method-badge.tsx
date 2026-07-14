@@ -1,18 +1,20 @@
-import type { Method } from "@prisma/client";
+import type { Method, VerificationStatus } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { formatAttendanceMethodLabel } from "@/lib/attendance-method";
 
 interface AttendanceMethodBadgeProps {
   method: Method | null;
+  verification?: VerificationStatus | null;
   className?: string;
 }
 
 /** شارة صغيرة بجانب وقت الحضور/الانصراف توضّح طريقة التسجيل */
 export function AttendanceMethodBadge({
   method,
+  verification,
   className,
 }: AttendanceMethodBadgeProps) {
-  const label = formatAttendanceMethodLabel(method);
+  const label = formatAttendanceMethodLabel(method, verification);
   if (!label) return null;
 
   return (

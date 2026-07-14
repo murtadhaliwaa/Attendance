@@ -46,13 +46,17 @@ function summarizeEmployeeWeek(
     department: string;
   },
   days: Date[],
-  attendanceByDate: Map<string, { status: Status; checkIn: Date | null }>,
+  attendanceByDate: Map<
+    string,
+    { kind: "counted" | "awaiting"; status?: Status; checkIn: Date | null }
+  >,
   shiftContext: Awaited<ReturnType<typeof getShiftTimingsBundle>>
 ): WeeklyEmployeeSummary {
   let present = 0;
   let late = 0;
   let earlyLeave = 0;
   let absent = 0;
+  let awaitingReview = 0;
   let workingDays = 0;
   const lateDays: LateDayDetail[] = [];
 
@@ -63,8 +67,15 @@ function summarizeEmployeeWeek(
       continue;
     }
 
-    workingDays += 1;
     const record = attendanceByDate.get(dayKey);
+
+    if (record?.kind === "awaiting") {
+      // أيام بانتظار التأكيد لا تُحسب غياباً ولا حضورًا
+      awaitingReview += 1;
+      continue;
+    }
+
+    workingDays += 1;
 
     if (!record) {
       if (!isTodayDateKey(dayKey)) {
@@ -103,6 +114,7 @@ function summarizeEmployeeWeek(
     late,
     earlyLeave,
     absent,
+    awaitingReview,
     workingDays,
     lateDetails: formatLateDetails(lateDays),
     lateDays,
@@ -166,30 +178,66 @@ export async function getWeeklyReport(
       checkIn: true,
       checkInMethod: true,
       checkInVerificationStatus: true,
+      checkOutMethod: true,
+      checkOutVerificationStatus: true,
     },
   });
 
   const attendanceByEmployee = new Map<
     string,
-    Map<string, { status: Status; checkIn: Date | null }>
+    Map<
+      string,
+      { kind: "counted" | "awaiting"; status?: Status; checkIn: Date | null }
+    >
   >();
 
   for (const record of attendances) {
-    if (
-      !isCheckInCounted(
-        record.checkInMethod,
-        record.checkInVerificationStatus
-      )
-    ) {
-      continue;
-    }
     const dayKey = toDateKey(record.date);
     if (!attendanceByEmployee.has(record.employeeId)) {
       attendanceByEmployee.set(record.employeeId, new Map());
     }
-    attendanceByEmployee
-      .get(record.employeeId)!
-      .set(dayKey, { status: record.status, checkIn: record.checkIn });
+    const byDate = attendanceByEmployee.get(record.employeeId)!;
+
+    const checkInCounted = isCheckInCounted(
+      record.checkInMethod,
+      record.checkInVerificationStatus
+    );
+
+    if (!checkInCounted) {
+      const awaiting =
+        record.checkInVerificationStatus === "PENDING" ||
+        record.checkOutVerificationStatus === "PENDING";
+      if (awaiting) {
+        byDate.set(dayKey, { kind: "awaiting", checkIn: record.checkIn });
+      }
+      continue;
+    }
+
+    const checkOutCounted = isCheckOutCounted(
+      record.checkOutMethod,
+      record.checkOutVerificationStatus
+    );
+
+    // حضور معتمد وانصراف صورة بانتظار التأكيد → لا يُحسب يوماً مكتملاً بعد
+    if (
+      record.checkOutMethod === "PHOTO" &&
+      record.checkOutVerificationStatus === "PENDING"
+    ) {
+      byDate.set(dayKey, { kind: "awaiting", checkIn: record.checkIn });
+      continue;
+    }
+
+    // لا تعتمد انصرافاً مبكراً قبل تأكيد صورة الانصراف
+    let status = record.status;
+    if (status === "EARLY_LEAVE" && !checkOutCounted) {
+      status = "PRESENT";
+    }
+
+    byDate.set(dayKey, {
+      kind: "counted",
+      status,
+      checkIn: record.checkIn,
+    });
   }
 
   const summaries = employees.map((employee) =>
@@ -317,11 +365,13 @@ export async function getEmployeeReport(
             date: dayKey,
             dayName: format(day, "EEEE", { locale: arSA }),
             status: pending ? "AWAITING_REVIEW" : "ABSENT",
-            checkIn: record.checkIn ? formatTimeAr(record.checkIn) : null,
-            checkOut:
-              record.checkOut && checkOutCounted
-                ? formatTimeAr(record.checkOut)
+            checkIn:
+              record.checkIn &&
+              (pending ||
+                record.checkInVerificationStatus === "REJECTED")
+                ? formatTimeAr(record.checkIn)
                 : null,
+            checkOut: null,
             isWorkingDay: true,
             lateMinutes: null,
             checkInMethod: record.checkInMethod,
@@ -332,7 +382,69 @@ export async function getEmployeeReport(
         }
 
         let lateMinutes: number | null = null;
-        if (record.status === "LATE" && record.checkIn) {
+        let dayStatus: EmployeeDayStatus = record.status;
+
+        const checkoutPending =
+          record.checkOutMethod === "PHOTO" &&
+          record.checkOutVerificationStatus === "PENDING";
+        const checkoutRejected =
+          record.checkOutMethod === "PHOTO" &&
+          record.checkOutVerificationStatus === "REJECTED";
+
+        // انصراف صورة معلّق أو مرفوض: اليوم ليس مكتملاً للعرض
+        if (checkoutPending) {
+          dayStatus = "AWAITING_REVIEW";
+          if (record.checkIn) {
+            const minutes = computeLateMinutes(
+              employee,
+              record.checkIn,
+              shiftContext
+            );
+            lateMinutes = minutes > 0 ? minutes : null;
+          }
+        } else if (checkoutRejected) {
+          // الحضور معتمد لكن الانصراف مرفوض — اعرض حالة الحضور مع شارة الرفض على الانصراف
+          if (record.status === "EARLY_LEAVE") {
+            if (record.checkIn) {
+              const minutes = computeLateMinutes(
+                employee,
+                record.checkIn,
+                shiftContext
+              );
+              if (minutes > 0) {
+                dayStatus = "LATE";
+                lateMinutes = minutes;
+              } else {
+                dayStatus = "PRESENT";
+              }
+            } else {
+              dayStatus = "PRESENT";
+            }
+          } else if (record.status === "LATE" && record.checkIn) {
+            const minutes = computeLateMinutes(
+              employee,
+              record.checkIn,
+              shiftContext
+            );
+            lateMinutes = minutes > 0 ? minutes : null;
+          }
+        } else if (record.status === "EARLY_LEAVE" && !checkOutCounted) {
+          if (record.checkIn) {
+            const minutes = computeLateMinutes(
+              employee,
+              record.checkIn,
+              shiftContext
+            );
+            if (minutes > 0) {
+              dayStatus = "LATE";
+              lateMinutes = minutes;
+            } else {
+              dayStatus = "PRESENT";
+            }
+          } else {
+            dayStatus = "PRESENT";
+          }
+        } else if (record.status === "LATE" && record.checkIn) {
           const minutes = computeLateMinutes(
             employee,
             record.checkIn,
@@ -344,10 +456,11 @@ export async function getEmployeeReport(
         return {
           date: dayKey,
           dayName: format(day, "EEEE", { locale: arSA }),
-          status: record.status,
+          status: dayStatus,
           checkIn: record.checkIn ? formatTimeAr(record.checkIn) : null,
           checkOut:
-            record.checkOut && checkOutCounted
+            record.checkOut &&
+            (checkOutCounted || checkoutPending || checkoutRejected)
               ? formatTimeAr(record.checkOut)
               : null,
           isWorkingDay: true,

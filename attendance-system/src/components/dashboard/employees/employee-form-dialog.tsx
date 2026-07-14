@@ -107,6 +107,7 @@ export function EmployeeFormDialog({
   const [referencePhotoDataUrl, setReferencePhotoDataUrl] = useState<string | null>(
     null
   );
+  const [clearReferencePhoto, setClearReferencePhoto] = useState(false);
 
   const selectedShift = shifts.find((shift) => shift.id === form.shiftId);
 
@@ -120,12 +121,14 @@ export function EmployeeFormDialog({
         shiftId: data.shiftId || shifts[0]?.id || "",
       });
       setReferencePhotoDataUrl(null);
+      setClearReferencePhoto(false);
     } else {
       setForm({
         ...emptyEmployeeForm(""),
         shiftId: shifts[0]?.id ?? "",
       });
       setReferencePhotoDataUrl(null);
+      setClearReferencePhoto(false);
     }
   }, [open, employee, shifts, departments]);
 
@@ -159,7 +162,9 @@ export function EmployeeFormDialog({
         customEndTime: form.customEndTime.trim() || null,
         ...(referencePhotoDataUrl
           ? { referencePhotoDataUrl }
-          : {}),
+          : clearReferencePhoto
+            ? { clearReferencePhoto: true }
+            : {}),
       };
 
       const res = await fetch(
@@ -330,10 +335,21 @@ export function EmployeeFormDialog({
             >
               <ReferencePhotoPanel
                 active={open}
-                hasExistingPhoto={!!employee?.hasReferencePhoto}
-                existingPhotoPath={employee?.referencePhotoUrl ?? null}
+                hasExistingPhoto={
+                  !!employee?.hasReferencePhoto && !clearReferencePhoto
+                }
+                existingPhotoPath={
+                  clearReferencePhoto
+                    ? null
+                    : (employee?.referencePhotoUrl ?? null)
+                }
                 photoDataUrl={referencePhotoDataUrl}
-                onCaptured={setReferencePhotoDataUrl}
+                onCaptured={(dataUrl) => {
+                  setReferencePhotoDataUrl(dataUrl);
+                  if (dataUrl) setClearReferencePhoto(false);
+                }}
+                canClearExisting={isEdit}
+                onClearExisting={() => setClearReferencePhoto(true)}
               />
             </FormSection>
 

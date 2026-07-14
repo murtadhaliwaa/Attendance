@@ -3,6 +3,13 @@ import { requireAuth } from "@/lib/api-auth";
 import { requireKioskAuth } from "@/lib/kiosk-auth";
 import { getSignedPhotoUrl } from "@/lib/photo-storage";
 
+function isAllowedPhotoPath(path: string): boolean {
+  if (path.includes("..") || path.startsWith("/") || path.includes("\\")) {
+    return false;
+  }
+  return path.startsWith("reference/") || path.startsWith("attendance/");
+}
+
 export async function GET(request: Request) {
   const kioskDenied = await requireKioskAuth(request);
   if (kioskDenied) {
@@ -16,7 +23,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "مسار الصورة مطلوب" }, { status: 400 });
   }
 
-  if (path.includes("..")) {
+  if (!isAllowedPhotoPath(path)) {
     return NextResponse.json({ error: "مسار غير صالح" }, { status: 400 });
   }
 

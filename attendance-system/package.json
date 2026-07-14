@@ -19,7 +19,7 @@
     "test:rate-limit": "npx tsx scripts/test-rate-limit.ts",
     "storage:setup-photos": "node scripts/setup-photo-storage-sql.mjs",
     "storage:cleanup-photos": "npx tsx scripts/cleanup-attendance-photos.ts",
-    "db:migrate:photo": "node scripts/apply-photo-migration.mjs && node scripts/record-photo-migration.mjs",
+    "db:migrate:deploy": "npx prisma migrate deploy",
     "db:backfill-departments": "npx tsx scripts/backfill-department-ids.ts",
     "env:validate": "npx tsx scripts/validate-env.ts"
   },

@@ -190,13 +190,17 @@ function EmployeeReportDetail({
                     {day.dayName}
                   </TableCell>
                   <TableCell className="text-center">
-                    <DayStatusBadge status={day.status} />
+                    <DayStatusBadge
+                      status={day.status}
+                      checkInVerification={day.checkInVerificationStatus}
+                    />
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex flex-col items-center gap-1">
                       <TimeCell value={day.checkIn} />
                       <AttendanceMethodBadge
                         method={day.checkInMethod}
+                        verification={day.checkInVerificationStatus}
                       />
                     </div>
                   </TableCell>
@@ -205,6 +209,7 @@ function EmployeeReportDetail({
                       <TimeCell value={day.checkOut} />
                       <AttendanceMethodBadge
                         method={day.checkOutMethod}
+                        verification={day.checkOutVerificationStatus}
                       />
                     </div>
                   </TableCell>
@@ -405,9 +410,11 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
     (acc, emp) => ({
       present: acc.present + emp.present,
       late: acc.late + emp.late,
+      earlyLeave: acc.earlyLeave + emp.earlyLeave,
       absent: acc.absent + emp.absent,
+      awaitingReview: acc.awaitingReview + emp.awaitingReview,
     }),
-    { present: 0, late: 0, absent: 0 }
+    { present: 0, late: 0, earlyLeave: 0, absent: 0, awaitingReview: 0 }
   );
 
   return (
@@ -522,7 +529,11 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
           <p className="mt-3 text-sm text-text-secondary">
             {data.shiftName ? `${data.shiftName} · ` : ""}
             {data.employees.length} موظف · {totals.present} يوم حضور ·{" "}
-            {totals.late} تأخير · {totals.absent} غياب
+            {totals.late} تأخير · {totals.earlyLeave} انصراف مبكر ·{" "}
+            {totals.awaitingReview > 0
+              ? `${totals.awaitingReview} بانتظار التأكيد · `
+              : ""}
+            {totals.absent} غياب
           </p>
         </CardHeader>
       </Card>
@@ -548,6 +559,7 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
                 <TableHead className="text-center">القسم</TableHead>
                 <TableHead className="text-center">حاضر</TableHead>
                 <TableHead className="text-center">متأخر</TableHead>
+                <TableHead className="text-center">بانتظار</TableHead>
                 <TableHead className="text-center">غائب</TableHead>
                 {canExport && (
                   <TableHead className="w-12 text-center">تحميل</TableHead>
@@ -558,7 +570,7 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
               {filteredEmployees.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={canExport ? 6 : 5}
+                    colSpan={canExport ? 7 : 6}
                     className="py-10 text-center text-text-muted"
                   >
                     {data.employees.length === 0
@@ -594,6 +606,9 @@ export function ReportsManager({ initialData, shifts }: ReportsManagerProps) {
                         </TableCell>
                         <TableCell className="text-center text-amber-200">
                           {emp.late}
+                        </TableCell>
+                        <TableCell className="text-center text-sky-200">
+                          {emp.awaitingReview}
                         </TableCell>
                         <TableCell className="text-center text-rose-200">
                           {emp.absent}

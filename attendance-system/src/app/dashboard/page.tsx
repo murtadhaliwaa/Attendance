@@ -29,7 +29,10 @@ import { employeeShiftSelect } from "@/lib/employee-shift";
 import { resolveEmployeeShift } from "@/lib/attendance-shift";
 import { getShiftTimingsBundle } from "@/lib/attendance-reconcile";
 import { getTodayDate } from "@/lib/app-timezone";
-import { isCheckInCounted } from "@/lib/attendance-verification";
+import {
+  isCheckInCounted,
+} from "@/lib/attendance-verification";
+import type { Status, VerificationStatus } from "@prisma/client";
 
 export default async function DashboardPage() {
   const systemUser = await getSessionSystemUser();
@@ -53,6 +56,8 @@ export default async function DashboardPage() {
         status: true,
         checkInMethod: true,
         checkInVerificationStatus: true,
+        checkOutMethod: true,
+        checkOutVerificationStatus: true,
       },
     }),
     prisma.attendance.findMany({
@@ -91,39 +96,93 @@ export default async function DashboardPage() {
   const lateToday = countedToday.filter((record) => record.status === "LATE").length;
   const pendingReviewToday = todayAttendances.filter(
     (record) =>
-      record.checkInMethod === "PHOTO" &&
-      record.checkInVerificationStatus === "PENDING"
+      (record.checkInMethod === "PHOTO" &&
+        record.checkInVerificationStatus === "PENDING") ||
+      (record.checkOutMethod === "PHOTO" &&
+        record.checkOutVerificationStatus === "PENDING")
   ).length;
   const unreadAlerts = recentAlerts.length;
 
   const attendanceRows = recentRecords.map((record) => {
-    const shift = resolveEmployeeShift(
-      record.employee,
-      record.checkIn,
-      { allShifts, defaultShift }
-    );
+    const checkInRejected =
+      record.checkInMethod === "PHOTO" &&
+      record.checkInVerificationStatus === "REJECTED";
+    const checkInPending =
+      record.checkInMethod === "PHOTO" &&
+      record.checkInVerificationStatus === "PENDING";
+    const checkOutRejected =
+      record.checkOutMethod === "PHOTO" &&
+      record.checkOutVerificationStatus === "REJECTED";
+    const checkOutPending =
+      record.checkOutMethod === "PHOTO" &&
+      record.checkOutVerificationStatus === "PENDING";
+
+    const shift = resolveEmployeeShift(record.employee, record.checkIn, {
+      allShifts,
+      defaultShift,
+    });
     const { status, lateMinutes } = getEffectiveCheckInStatus(
       record.checkIn,
       shift
     );
-    const displayStatus =
-      record.status === "EARLY_LEAVE" ? record.status : status;
+    const attendanceStatus: Status =
+      record.status === "EARLY_LEAVE" && !checkOutPending && !checkOutRejected
+        ? record.status
+        : status;
+
+    let statusKind: "attendance" | "verification" = "attendance";
+    let statusText: string | null = null;
+    let verificationStatus: VerificationStatus | null = null;
+
+    if (checkInRejected) {
+      statusKind = "verification";
+      statusText = "حضور مرفوض";
+      verificationStatus = "REJECTED";
+    } else if (checkInPending) {
+      statusKind = "verification";
+      statusText = "حضور بانتظار التأكيد";
+      verificationStatus = "PENDING";
+    } else if (checkOutRejected) {
+      statusKind = "verification";
+      statusText = "انصراف مرفوض";
+      verificationStatus = "REJECTED";
+    } else if (checkOutPending) {
+      statusKind = "verification";
+      statusText = "انصراف بانتظار التأكيد";
+      verificationStatus = "PENDING";
+    }
 
     return {
       id: record.id,
       employeeName: record.employee.name,
       checkIn: record.checkIn,
       checkOut: record.checkOut,
-      status: displayStatus,
+      attendanceStatus,
+      statusKind,
+      statusText,
+      verificationStatus,
       lateMinutes:
-        displayStatus === "LATE" || status === "LATE" ? lateMinutes : 0,
+        !checkInRejected &&
+        !checkInPending &&
+        (attendanceStatus === "LATE" || status === "LATE")
+          ? lateMinutes
+          : 0,
       checkInMethod: record.checkInMethod,
       checkOutMethod: record.checkOutMethod,
+      checkInVerificationStatus: record.checkInVerificationStatus,
+      checkOutVerificationStatus: record.checkOutVerificationStatus,
     };
   });
 
+  // الغياب يستثني فقط حضور الصورة بانتظار التأكيد (وليس انصرافاً معلّقاً)
+  const pendingCheckInOnly = todayAttendances.filter(
+    (record) =>
+      record.checkInMethod === "PHOTO" &&
+      record.checkInVerificationStatus === "PENDING"
+  ).length;
+
   const absentEstimate = Math.max(
-    employeeCount - todayAttendanceCount - pendingReviewToday,
+    employeeCount - todayAttendanceCount - pendingCheckInOnly,
     0
   );
 
@@ -226,7 +285,20 @@ export default async function DashboardPage() {
                         {record.employeeName}
                       </p>
                       <div className="flex shrink-0 flex-col items-end gap-1">
-                        <StatusLabel status={record.status} />
+                        {record.statusKind === "verification" ? (
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium",
+                              record.verificationStatus === "REJECTED"
+                                ? "bg-rose-500/15 text-rose-200"
+                                : "bg-amber-500/15 text-amber-200"
+                            )}
+                          >
+                            {record.statusText}
+                          </span>
+                        ) : (
+                          <StatusLabel status={record.attendanceStatus} />
+                        )}
                         {record.lateMinutes > 0 && (
                           <span className="text-[11px] text-amber-200">
                             تأخر {formatLateDuration(record.lateMinutes)}
@@ -246,6 +318,7 @@ export default async function DashboardPage() {
                         />
                         <AttendanceMethodBadge
                           method={record.checkInMethod}
+                          verification={record.checkInVerificationStatus}
                         />
                       </div>
                       <div className="flex flex-col items-center gap-1 text-center">
@@ -259,6 +332,7 @@ export default async function DashboardPage() {
                         />
                         <AttendanceMethodBadge
                           method={record.checkOutMethod}
+                          verification={record.checkOutVerificationStatus}
                         />
                       </div>
                     </div>
@@ -293,6 +367,7 @@ export default async function DashboardPage() {
                             />
                             <AttendanceMethodBadge
                               method={record.checkInMethod}
+                              verification={record.checkInVerificationStatus}
                             />
                           </div>
                         </TableCell>
@@ -307,12 +382,26 @@ export default async function DashboardPage() {
                             />
                             <AttendanceMethodBadge
                               method={record.checkOutMethod}
+                              verification={record.checkOutVerificationStatus}
                             />
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <StatusLabel status={record.status} />
+                            {record.statusKind === "verification" ? (
+                              <span
+                                className={cn(
+                                  "inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                  record.verificationStatus === "REJECTED"
+                                    ? "bg-rose-500/15 text-rose-200"
+                                    : "bg-amber-500/15 text-amber-200"
+                                )}
+                              >
+                                {record.statusText}
+                              </span>
+                            ) : (
+                              <StatusLabel status={record.attendanceStatus} />
+                            )}
                             {record.lateMinutes > 0 && (
                               <span className="text-xs text-amber-200">
                                 تأخر {formatLateDuration(record.lateMinutes)}

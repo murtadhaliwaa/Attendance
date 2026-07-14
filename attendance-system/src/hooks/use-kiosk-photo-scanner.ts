@@ -133,11 +133,11 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     const selectedEmployee = roster.find(
       (employee) => employee.id === selectedEmployeeId
     );
-    if (
-      selectedEmployee &&
-      selectedEmployee.shiftId &&
-      selectedEmployee.shiftId !== selectedShiftId
-    ) {
+    if (!selectedEmployee?.shiftId) {
+      toast.error("لم يُعيَّن شفت لهذا الموظف — راجع مسؤول النظام");
+      return;
+    }
+    if (selectedEmployee.shiftId !== selectedShiftId) {
       toast.error("الموظف لا ينتمي إلى الشفت المختار");
       return;
     }

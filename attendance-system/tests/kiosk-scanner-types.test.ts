@@ -4,6 +4,7 @@ import {
   getBlockReason,
   type TodayStatus,
 } from "@/lib/kiosk-scanner-types";
+import { MAX_PHOTO_SUBMIT_ATTEMPTS } from "@/lib/photo-attendance-limits";
 
 const today = (overrides: Partial<TodayStatus> = {}): TodayStatus => ({
   hasCheckIn: false,
@@ -25,6 +26,45 @@ describe("kiosk-scanner-types", () => {
     it("يسمح إذا لم يسجّل الحضور بعد", () => {
       expect(getBlockReason("checkin", today())).toBeNull();
     });
+
+    it("يسمح بإعادة الإرسال أثناء PENDING قبل الحد الأقصى", () => {
+      expect(
+        getBlockReason(
+          "checkin",
+          today({
+            hasCheckIn: true,
+            checkInVerificationStatus: "PENDING",
+            checkInPhotoAttempts: 1,
+          })
+        )
+      ).toBeNull();
+    });
+
+    it("يمنع عند استنفاد محاولات PENDING", () => {
+      expect(
+        getBlockReason(
+          "checkin",
+          today({
+            hasCheckIn: true,
+            checkInVerificationStatus: "PENDING",
+            checkInPhotoAttempts: MAX_PHOTO_SUBMIT_ATTEMPTS,
+          })
+        )
+      ).toBe("already_checkin");
+    });
+
+    it("يسمح بعد الرفض", () => {
+      expect(
+        getBlockReason(
+          "checkin",
+          today({
+            hasCheckIn: true,
+            checkInVerificationStatus: "REJECTED",
+            checkInPhotoAttempts: 0,
+          })
+        )
+      ).toBeNull();
+    });
   });
 
   describe("getBlockReason — checkout", () => {
@@ -32,14 +72,57 @@ describe("kiosk-scanner-types", () => {
       expect(getBlockReason("checkout", today())).toBe("no_checkin");
     });
 
+    it("يمنع إذا حضورك صورة بانتظار التأكيد", () => {
+      expect(
+        getBlockReason(
+          "checkout",
+          today({
+            hasCheckIn: true,
+            checkInVerificationStatus: "PENDING",
+            checkInPhotoAttempts: 1,
+          })
+        )
+      ).toBe("no_checkin");
+    });
+
     it("يمنع إذا سبق تسجيل الانصراف", () => {
       expect(
-        getBlockReason("checkout", today({ hasCheckIn: true, hasCheckOut: true }))
+        getBlockReason(
+          "checkout",
+          today({
+            hasCheckIn: true,
+            checkInVerificationStatus: "APPROVED",
+            hasCheckOut: true,
+          })
+        )
       ).toBe("already_done");
     });
 
+    it("يسمح بإعادة انصراف PENDING قبل الحد", () => {
+      expect(
+        getBlockReason(
+          "checkout",
+          today({
+            hasCheckIn: true,
+            checkInVerificationStatus: "APPROVED",
+            hasCheckOut: true,
+            checkOutVerificationStatus: "PENDING",
+            checkOutPhotoAttempts: 2,
+          })
+        )
+      ).toBeNull();
+    });
+
     it("يسمح إذا سجّل الحضور ولم ينصرف", () => {
-      expect(getBlockReason("checkout", today({ hasCheckIn: true }))).toBeNull();
+      expect(
+        getBlockReason(
+          "checkout",
+          today({
+            hasCheckIn: true,
+            checkInVerificationStatus: "APPROVED",
+          })
+        )
+      ).toBeNull();
     });
   });
 
@@ -53,6 +136,20 @@ describe("kiosk-scanner-types", () => {
       );
       expect(msg).toContain("محمد");
       expect(msg).toContain("08:00 ص");
+    });
+
+    it("يوضح حد المحاولات عند PENDING مستنفد", () => {
+      const msg = blockMessage(
+        "checkin",
+        "already_checkin",
+        "محمد",
+        today({
+          hasCheckIn: true,
+          checkInVerificationStatus: "PENDING",
+          checkInPhotoAttempts: MAX_PHOTO_SUBMIT_ATTEMPTS,
+        })
+      );
+      expect(msg).toContain("وصلت للحد الأقصى");
     });
 
     it("يطلب تسجيل الحضور أولاً عند no_checkin", () => {

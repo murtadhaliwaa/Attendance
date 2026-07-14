@@ -16,10 +16,13 @@ const REQUIRED = [
 
 const RECOMMENDED = [
   "DIRECT_URL",
+  "CRON_SECRET",
   "SUPABASE_S3_ACCESS_KEY_ID",
   "SUPABASE_S3_SECRET_ACCESS_KEY",
   "SUPABASE_S3_REGION",
 ] as const;
+
+const WEAK_DEFAULT = "Admin@123456";
 
 function isPlaceholder(value: string | undefined): boolean {
   if (!value?.trim()) return true;
@@ -62,6 +65,30 @@ function main() {
     warnings.forEach((k) => console.warn(`   - ${k}`));
   }
 
+  const kioskKey = process.env.KIOSK_API_KEY!;
+  if (kioskKey.length < 32) {
+    console.warn(
+      "⚠️  KIOSK_API_KEY قصيرة — يُفضّل قيمة عشوائية ≥ 32 حرفاً (مثال: openssl rand -hex 32)"
+    );
+  }
+
+  const cron = process.env.CRON_SECRET?.trim();
+  if (!cron) {
+    console.warn(
+      "⚠️  CRON_SECRET غير مُعد — تنظيف صور الحضور على Vercel لن يعمل في الإنتاج"
+    );
+  } else if (isPlaceholder(cron) || cron.length < 24) {
+    console.warn(
+      "⚠️  CRON_SECRET ضعيف أو افتراضي — عيّن سراً طويلاً عشوائياً في Vercel"
+    );
+  }
+
+  if (!process.env.DIRECT_URL?.trim()) {
+    console.warn(
+      "⚠️  DIRECT_URL ناقص — prisma migrate deploy على Vercel قد يفشل"
+    );
+  }
+
   const hasS3 =
     !!process.env.SUPABASE_S3_ACCESS_KEY_ID?.trim() &&
     !!process.env.SUPABASE_S3_SECRET_ACCESS_KEY?.trim();
@@ -70,6 +97,13 @@ function main() {
   } else {
     console.warn(
       "⚠️  مفاتيح S3 غير مكتملة — رفع الصور (المرجعية والحضور) لن يعمل"
+    );
+  }
+
+  const authPassword = process.env.AUTH_SETUP_PASSWORD?.trim();
+  if (!authPassword || authPassword === WEAK_DEFAULT) {
+    console.warn(
+      `⚠️  غيّر كلمات مرور الإدارة إن كانت ما زالت ${WEAK_DEFAULT} — عيّن AUTH_SETUP_PASSWORD عند الإعداد وجدّد كلمة المرور من Supabase Auth`
     );
   }
 
@@ -87,7 +121,10 @@ function main() {
   console.log("✅ جميع متغيرات البيئة المطلوبة جاهزة");
   console.log(`   Supabase: ${url}`);
   console.log(`   Database: ${db.includes("supabase.com") ? "Supabase ✓" : "custom"}`);
-  console.log(`   Kiosk key: ${process.env.KIOSK_API_KEY!.slice(0, 8)}…`);
+  console.log(`   Kiosk key: ${kioskKey.slice(0, 8)}…`);
+  console.log(
+    "   تذكير: الكشك للشبكة الداخلية فقط — لا تنشر /kiosk على الإنترنت العام"
+  );
 }
 
 main();

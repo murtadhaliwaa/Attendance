@@ -5,7 +5,6 @@ import { MAX_PHOTO_SUBMIT_ATTEMPTS } from "@/lib/photo-attendance-limits";
 export type KioskState =
   | "loading"
   | "scanning"
-  | "verifying"
   | "processing"
   | "success"
   | "error";
@@ -26,6 +25,9 @@ export interface AttendanceResult {
   time: string;
   status: string;
   department: string;
+  pending?: boolean;
+  attempt?: number;
+  maxAttempts?: number;
 }
 
 export interface TodayStatus {
@@ -77,11 +79,7 @@ export function blockMessage(
 ): string {
   if (reason === "already_checkin") {
     if (today.checkInVerificationStatus === "PENDING") {
-      const used = Math.max(today.checkInPhotoAttempts ?? 1, 1);
-      if (used >= MAX_PHOTO_SUBMIT_ATTEMPTS) {
-        return `أنت ${employeeName}، وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر تأكيد موظف الاستعلامات`;
-      }
-      return `أنت ${employeeName}، طلب حضورك قيد المراجعة — يمكنك إعادة الإرسال أو انتظار التأكيد`;
+      return `أنت ${employeeName}، وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر تأكيد موظف الاستعلامات`;
     }
     return `أنت ${employeeName}، حضورك مسجّل مسبقاً (${today.checkInTime ?? ""})`;
   }
@@ -92,11 +90,7 @@ export function blockMessage(
     return `أنت ${employeeName}، سجّل حضورك أولاً من صفحة الحضور`;
   }
   if (today.checkOutVerificationStatus === "PENDING") {
-    const used = Math.max(today.checkOutPhotoAttempts ?? 1, 1);
-    if (used >= MAX_PHOTO_SUBMIT_ATTEMPTS) {
-      return `أنت ${employeeName}، وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر تأكيد موظف الاستعلامات`;
-    }
-    return `أنت ${employeeName}، طلب انصرافك قيد المراجعة — يمكنك إعادة الإرسال أو انتظار التأكيد`;
+    return `أنت ${employeeName}، وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر تأكيد موظف الاستعلامات`;
   }
   return `أنت ${employeeName}، انصرافك مسجّل مسبقاً (${today.checkOutTime ?? ""})`;
 }

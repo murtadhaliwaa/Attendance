@@ -62,15 +62,17 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-text-secondary">
-          جهاز التسجيل الميداني؟{" "}
-          <Link
-            href="/kiosk"
-            className="text-blue-primary transition-colors hover:text-blue-dark"
-          >
-            الانتقال إلى الحضور والانصراف
-          </Link>
-        </p>
+        {!isProduction && (
+          <p className="text-center text-sm text-text-secondary">
+            جهاز التسجيل الميداني؟{" "}
+            <Link
+              href="/kiosk"
+              className="text-blue-primary transition-colors hover:text-blue-dark"
+            >
+              الانتقال إلى الحضور والانصراف
+            </Link>
+          </p>
+        )}
       </div>
     </main>
   );

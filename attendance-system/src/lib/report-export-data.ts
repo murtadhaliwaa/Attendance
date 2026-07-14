@@ -21,6 +21,7 @@ export const WEEKLY_REPORT_HEADERS = [
   "تفاصيل التأخير",
   "إجمالي التأخير",
   "انصراف مبكر",
+  "بانتظار التأكيد",
   "غائب",
 ] as const;
 
@@ -75,6 +76,7 @@ export function buildWeeklyReportRows(
         : formatLateDetailsForPdf(emp.lateDays),
     "إجمالي التأخير": formatTotalLate(emp.totalLateMinutes, format),
     "انصراف مبكر": emp.earlyLeave,
+    "بانتظار التأكيد": emp.awaitingReview,
     غائب: emp.absent,
   }));
 }
@@ -107,13 +109,23 @@ export function buildEmployeeReportRows(
   return data.days.map((day) => ({
     التاريخ: day.date,
     اليوم: day.dayName,
-    الحالة: dayStatusLabels[day.status],
+    الحالة:
+      day.status === "ABSENT" &&
+      day.checkInVerificationStatus === "REJECTED"
+        ? "غائب — محاولة مرفوضة"
+        : dayStatusLabels[day.status],
     الحضور: day.checkIn ?? "—",
     "طريقة الحضور":
-      formatAttendanceMethodLabel(day.checkInMethod) ?? "—",
+      formatAttendanceMethodLabel(
+        day.checkInMethod,
+        day.checkInVerificationStatus
+      ) ?? "—",
     الانصراف: day.checkOut ?? "—",
     "طريقة الانصراف":
-      formatAttendanceMethodLabel(day.checkOutMethod) ?? "—",
+      formatAttendanceMethodLabel(
+        day.checkOutMethod,
+        day.checkOutVerificationStatus
+      ) ?? "—",
     التأخير:
       day.lateMinutes && day.lateMinutes > 0
         ? formatTotalLate(day.lateMinutes, format)

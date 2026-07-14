@@ -16,6 +16,9 @@ interface ReferencePhotoPanelProps {
   existingPhotoPath?: string | null;
   photoDataUrl: string | null;
   onCaptured: (dataUrl: string | null) => void;
+  /** طلب مسح الصورة المرجعية المحفوظة (وضع التعديل فقط) */
+  onClearExisting?: () => void;
+  canClearExisting?: boolean;
 }
 
 export function ReferencePhotoPanel({
@@ -24,6 +27,8 @@ export function ReferencePhotoPanel({
   existingPhotoPath,
   photoDataUrl,
   onCaptured,
+  onClearExisting,
+  canClearExisting = false,
 }: ReferencePhotoPanelProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -143,19 +148,35 @@ export function ReferencePhotoPanel({
                 : "الصورة المرجعية مسجّلة مسبقاً"}
             </span>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs"
-            onClick={() => {
-              onCaptured(null);
-              setShowCamera(true);
-            }}
-          >
-            <RotateCcw className="size-3.5" />
-            إعادة التقاط
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            {canClearExisting && hasExistingPhoto && !photoDataUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs text-rose-300 hover:text-rose-200"
+                onClick={() => {
+                  onCaptured(null);
+                  onClearExisting?.();
+                }}
+              >
+                مسح
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={() => {
+                onCaptured(null);
+                setShowCamera(true);
+              }}
+            >
+              <RotateCcw className="size-3.5" />
+              إعادة التقاط
+            </Button>
+          </div>
         </div>
       )}
 

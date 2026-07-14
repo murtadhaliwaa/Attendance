@@ -3,6 +3,7 @@
 import {
   CheckCircle2,
   Camera,
+  Clock,
   Loader2,
   XCircle,
 } from "lucide-react";
@@ -20,7 +21,6 @@ import { KioskScannerHeader } from "@/components/kiosk/kiosk-scanner-header";
 import { KioskCameraView } from "@/components/kiosk/kiosk-camera-view";
 import { KioskScannerControls } from "@/components/kiosk/kiosk-scanner-controls";
 import { CameraFacingSelector } from "@/components/kiosk/camera-facing-selector";
-import { cn } from "@/lib/utils";
 
 interface KioskScannerProps {
   mode: KioskMode;
@@ -64,6 +64,11 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     result?.action === "already_done" ||
     result?.action === "no_checkin";
 
+  const isPendingSubmit =
+    !!result &&
+    (result.action === "checkin" || result.action === "checkout") &&
+    result.pending !== false;
+
   const cardTitle =
     state === "success" && result
       ? result.employeeName
@@ -92,20 +97,18 @@ export function KioskScanner({ mode }: KioskScannerProps) {
             {state === "processing" && (
               <Loader2 className="size-5 animate-spin" />
             )}
-            {state === "success" && (
-              <CheckCircle2
-                className={cn(
-                  isBlockedStatus ? "size-5" : "size-4",
-                  "text-status-present"
-                )}
-              />
-            )}
+            {state === "success" &&
+              (isPendingSubmit || isBlockedStatus ? (
+                <Clock className="size-5 text-amber-200" />
+              ) : (
+                <CheckCircle2 className="size-5 text-status-present" />
+              ))}
             {state === "error" && (
               <XCircle className="size-5 text-status-absent" />
             )}
             {cardTitle}
           </CardTitle>
-          <CardDescription className="hidden text-center text-sm font-medium text-text-primary sm:block">
+          <CardDescription className="text-center text-xs font-medium text-text-primary sm:text-sm">
             {statusText}
           </CardDescription>
         </CardHeader>

@@ -11,7 +11,7 @@ import {
   toEmployeeUncheckedUpdateInput,
 } from "@/lib/employee-shift";
 import { ensureShiftExists } from "@/lib/employee-validation";
-import { uploadEmployeePhoto } from "@/lib/photo-storage";
+import { uploadEmployeePhoto, deleteEmployeePhoto } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -169,6 +169,9 @@ export async function PUT(
         ? body.referencePhotoDataUrl.trim()
         : "";
 
+    const previousReferencePhotoUrl = existing.referencePhotoUrl;
+    let shouldDeletePreviousReference = false;
+
     if (referencePhotoDataUrl) {
       const photoPath = await uploadEmployeePhoto(
         params.id,
@@ -177,11 +180,12 @@ export async function PUT(
       );
       data.referencePhotoUrl = photoPath;
       data.hasReferencePhoto = true;
-    }
-
-    if (body.clearReferencePhoto === true) {
+      shouldDeletePreviousReference =
+        !!previousReferencePhotoUrl && previousReferencePhotoUrl !== photoPath;
+    } else if (body.clearReferencePhoto === true) {
       data.referencePhotoUrl = null;
       data.hasReferencePhoto = false;
+      shouldDeletePreviousReference = !!previousReferencePhotoUrl;
     }
 
     if (Object.keys(data).length === 0) {
@@ -206,6 +210,14 @@ export async function PUT(
       data: toEmployeeUncheckedUpdateInput(data),
       select: employeeListSelect,
     });
+
+    if (shouldDeletePreviousReference && previousReferencePhotoUrl) {
+      try {
+        await deleteEmployeePhoto(previousReferencePhotoUrl);
+      } catch {
+        // لا نفشل التحديث إذا تعذّر حذف الملف القديم
+      }
+    }
 
     return NextResponse.json({
       message: `تم تحديث بيانات ${employee.name}`,
@@ -244,6 +256,14 @@ export async function DELETE(
       prisma.attendance.deleteMany({ where: { employeeId: params.id } }),
       prisma.employee.delete({ where: { id: params.id } }),
     ]);
+
+    if (existing.referencePhotoUrl) {
+      try {
+        await deleteEmployeePhoto(existing.referencePhotoUrl);
+      } catch {
+        // تجاهل فشل حذف الصورة بعد حذف السجل
+      }
+    }
 
     return NextResponse.json({
       message: `تم حذف ${existing.name} نهائياً`,

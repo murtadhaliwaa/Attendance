@@ -1,14 +1,14 @@
 import { config } from "dotenv";
 import { Pool } from "pg";
 import path from "path";
+import { resolveAuthSetupPassword } from "./auth-setup-password";
 
 const projectRoot = path.resolve(__dirname, "..");
 config({ path: path.join(projectRoot, ".env.production.local") });
 config({ path: path.join(projectRoot, ".env.local") });
 config({ path: path.join(projectRoot, ".env") });
 
-const defaultPassword =
-  process.env.AUTH_SETUP_PASSWORD ?? "Admin@123456";
+const defaultPassword = resolveAuthSetupPassword();
 
 const USERS = [
   { email: "inquiry@company.com", name: "فهد العنزي" },

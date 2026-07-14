@@ -1,4 +1,4 @@
-import { Method, Status, type Prisma } from "@prisma/client";
+import { Method, Status, VerificationStatus, type Prisma } from "@prisma/client";
 import { getTodayDate } from "@/lib/app-timezone";
 import {
   formatTimeAr,
@@ -7,6 +7,7 @@ import {
 } from "@/lib/attendance-utils";
 import { resolveEmployeeShiftAsync } from "@/lib/attendance-shift";
 import { employeeShiftSelect } from "@/lib/employee-shift";
+import { deleteEmployeePhoto } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 
 type EmployeeWithShift = Prisma.EmployeeGetPayload<{
@@ -29,6 +30,19 @@ export async function getEmployeeForAttendance(
   });
 }
 
+async function deletePhotosSafe(
+  ...paths: Array<string | null | undefined>
+) {
+  for (const path of paths) {
+    if (!path) continue;
+    try {
+      await deleteEmployeePhoto(path);
+    } catch {
+      // لا نمنع المسح الإداري إن فشل حذف الملف
+    }
+  }
+}
+
 export async function adminRecordCheckIn(employee: EmployeeWithShift) {
   const today = getTodayDate();
   const now = new Date();
@@ -38,16 +52,32 @@ export async function adminRecordCheckIn(employee: EmployeeWithShift) {
   });
 
   if (existing?.checkIn) {
-    throw new AdminAttendanceError(
-      "تم تسجيل الحضور مسبقاً لهذا الموظف اليوم",
-      409
-    );
+    if (existing.checkInVerificationStatus === VerificationStatus.PENDING) {
+      throw new AdminAttendanceError(
+        "حضور بالصورة بانتظار التأكيد — أكّد/ارفض من المراجعات أو امسح السجل أولاً",
+        409
+      );
+    }
+    if (
+      existing.checkInVerificationStatus === VerificationStatus.APPROVED ||
+      existing.checkInMethod === Method.MANUAL ||
+      (existing.checkInMethod &&
+        existing.checkInVerificationStatus !== VerificationStatus.REJECTED)
+    ) {
+      throw new AdminAttendanceError(
+        "تم تسجيل الحضور مسبقاً لهذا الموظف اليوم",
+        409
+      );
+    }
+    // REJECTED → يُسمح بالتسجيل اليدوي مكانه
   }
 
   const shift = await resolveEmployeeShiftAsync(employee, now);
   const status = shift
     ? getAttendanceStatus(now, shift.startTime, shift.lateAfter, shift.endTime)
     : Status.PRESENT;
+
+  const previousPhoto = existing?.checkInPhotoUrl;
 
   const attendance = await prisma.attendance.upsert({
     where: { employeeId_date: { employeeId: employee.id, date: today } },
@@ -62,8 +92,18 @@ export async function adminRecordCheckIn(employee: EmployeeWithShift) {
       checkIn: now,
       status,
       checkInMethod: Method.MANUAL,
+      checkInPhotoUrl: null,
+      checkInPhotoAttempts: 0,
+      checkInShiftId: employee.shiftId,
+      checkInVerificationStatus: null,
+      checkInRejectionReason: null,
+      checkInReviewedAt: null,
+      checkInReviewedById: null,
+      checkInReviewedByName: null,
     },
   });
+
+  await deletePhotosSafe(previousPhoto);
 
   return {
     message: `تم تسجيل حضور ${employee.name} يدوياً`,
@@ -86,11 +126,43 @@ export async function adminRecordCheckOut(employee: EmployeeWithShift) {
     throw new AdminAttendanceError("لم يُسجَّل حضور لهذا الموظف اليوم", 400);
   }
 
-  if (existing.checkOut) {
+  if (
+    existing.checkInMethod === Method.PHOTO &&
+    existing.checkInVerificationStatus === VerificationStatus.PENDING
+  ) {
     throw new AdminAttendanceError(
-      "تم تسجيل الانصراف مسبقاً لهذا الموظف اليوم",
-      409
+      "لا يمكن تسجيل انصراف يدوي — حضور الصورة ما زال بانتظار التأكيد",
+      400
     );
+  }
+
+  if (
+    existing.checkInMethod === Method.PHOTO &&
+    existing.checkInVerificationStatus === VerificationStatus.REJECTED
+  ) {
+    throw new AdminAttendanceError(
+      "الحضور بالصورة مرفوض — سجّل حضوراً جديداً أولاً",
+      400
+    );
+  }
+
+  if (existing.checkOut) {
+    if (existing.checkOutVerificationStatus === VerificationStatus.PENDING) {
+      throw new AdminAttendanceError(
+        "انصراف بالصورة بانتظار التأكيد — أكّد/ارفض من المراجعات أو امسح الانصراف أولاً",
+        409
+      );
+    }
+    if (
+      existing.checkOutVerificationStatus === VerificationStatus.APPROVED ||
+      existing.checkOutMethod === Method.MANUAL ||
+      existing.checkOutVerificationStatus !== VerificationStatus.REJECTED
+    ) {
+      throw new AdminAttendanceError(
+        "تم تسجيل الانصراف مسبقاً لهذا الموظف اليوم",
+        409
+      );
+    }
   }
 
   let status = existing.status;
@@ -103,14 +175,26 @@ export async function adminRecordCheckOut(employee: EmployeeWithShift) {
     }
   }
 
+  const previousPhoto = existing.checkOutPhotoUrl;
+
   const attendance = await prisma.attendance.update({
     where: { id: existing.id },
     data: {
       checkOut: now,
       status,
       checkOutMethod: Method.MANUAL,
+      checkOutPhotoUrl: null,
+      checkOutPhotoAttempts: 0,
+      checkOutShiftId: employee.shiftId,
+      checkOutVerificationStatus: null,
+      checkOutRejectionReason: null,
+      checkOutReviewedAt: null,
+      checkOutReviewedById: null,
+      checkOutReviewedByName: null,
     },
   });
+
+  await deletePhotosSafe(previousPhoto);
 
   return {
     message: `تم تسجيل انصراف ${employee.name} يدوياً`,
@@ -140,6 +224,7 @@ export async function adminClearCheckIn(employee: EmployeeWithShift) {
   }
 
   await prisma.attendance.delete({ where: { id: existing.id } });
+  await deletePhotosSafe(existing.checkInPhotoUrl, existing.checkOutPhotoUrl);
 
   return {
     message: `تم مسح حضور ${employee.name} لهذا اليوم`,
@@ -172,14 +257,26 @@ export async function adminClearCheckOut(employee: EmployeeWithShift) {
       : Status.PRESENT;
   }
 
+  const previousPhoto = existing.checkOutPhotoUrl;
+
   await prisma.attendance.update({
     where: { id: existing.id },
     data: {
       checkOut: null,
       checkOutMethod: null,
+      checkOutPhotoUrl: null,
+      checkOutPhotoAttempts: 0,
+      checkOutShiftId: null,
+      checkOutVerificationStatus: null,
+      checkOutRejectionReason: null,
+      checkOutReviewedAt: null,
+      checkOutReviewedById: null,
+      checkOutReviewedByName: null,
       status,
     },
   });
+
+  await deletePhotosSafe(previousPhoto);
 
   return {
     message: `تم مسح انصراف ${employee.name} لهذا اليوم`,
@@ -201,6 +298,7 @@ export async function adminClearDay(employee: EmployeeWithShift) {
   }
 
   await prisma.attendance.delete({ where: { id: existing.id } });
+  await deletePhotosSafe(existing.checkInPhotoUrl, existing.checkOutPhotoUrl);
 
   return {
     message: `تم مسح سجل ${employee.name} لهذا اليوم بالكامل`,

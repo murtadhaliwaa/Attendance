@@ -10,7 +10,14 @@ config({ path: path.join(projectRoot, ".env") });
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const password = process.env.AUTH_SETUP_PASSWORD ?? "Admin@123456";
+const authPasswordRaw = process.env.AUTH_SETUP_PASSWORD?.trim();
+if (!authPasswordRaw) {
+  console.error(
+    "❌ عيّن AUTH_SETUP_PASSWORD للتحقق من الدخول (لا يوجد افتراضي ضعيف)"
+  );
+  process.exit(1);
+}
+const password: string = authPasswordRaw;
 const liveUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://attendance-zeta-flax.vercel.app";
 
