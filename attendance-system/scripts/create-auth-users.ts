@@ -13,8 +13,8 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const defaultPassword = resolveAuthSetupPassword({ allowWeakDefault: true });
 
 const users = [
-  { email: "hr@company.com", name: "سارة القحطاني" },
-  { email: "inquiry@company.com", name: "فهد العنزي" },
+  { email: "hr@company.com", name: "المدير" },
+  { email: "inquiry@company.com", name: "موظف الاستعلامات" },
 ];
 
 async function main() {

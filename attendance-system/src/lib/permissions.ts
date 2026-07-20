@@ -16,7 +16,9 @@ export type Permission =
   | "settings:read"
   | "settings:write"
   | "kiosk:access"
-  | "attendance:review";
+  | "attendance:review"
+  | "attendance:review-history"
+  | "attendance:review-delete";
 
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   MANAGER: [
@@ -31,13 +33,13 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "settings:write",
     "kiosk:access",
     "attendance:review",
+    "attendance:review-history",
+    "attendance:review-delete",
   ],
   INQUIRY_CLERK: [
     "dashboard:view",
     "employees:read",
     "employees:create",
-    "employees:update",
-    "reports:read",
     "settings:read",
     "kiosk:access",
     "attendance:review",

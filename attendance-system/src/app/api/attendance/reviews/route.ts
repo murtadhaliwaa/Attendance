@@ -14,6 +14,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const scope = searchParams.get("scope") ?? "pending";
 
+  if (scope === "all") {
+    const historyAuth = await requirePermission("attendance:review-history");
+    if (historyAuth.error) return historyAuth.error;
+  }
+
   const today = getTodayDate();
 
   const records = await prisma.attendance.findMany({

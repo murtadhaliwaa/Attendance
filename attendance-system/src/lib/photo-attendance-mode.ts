@@ -44,9 +44,9 @@ export function resolveCheckOutMode(
     checkOut: Date | null;
     checkOutVerificationStatus: VerificationStatus | null;
     checkOutPhotoAttempts: number;
-  }
+  } | null
 ): PhotoSubmitMode {
-  if (!existing.checkOut) return "create";
+  if (!existing?.checkOut) return "create";
 
   const verification = existing.checkOutVerificationStatus;
   if (verification === VerificationStatus.APPROVED) {

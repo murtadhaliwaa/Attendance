@@ -62,7 +62,7 @@ describe("photo-attendance-mode", () => {
   });
 
   describe("resolveCheckOutMode", () => {
-    it("ينشئ انصرافاً جديداً عند عدم وجوده", () => {
+    it("يسمح بالانصراف بدون سجل حضور", () => {
       expect(
         resolveCheckOutMode({
           checkOut: null,
@@ -70,6 +70,7 @@ describe("photo-attendance-mode", () => {
           checkOutPhotoAttempts: 0,
         })
       ).toBe("create");
+      expect(resolveCheckOutMode(null)).toBe("create");
     });
 
     it("يمنع الانصراف بعد الموافقة", () => {

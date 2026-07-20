@@ -294,36 +294,18 @@ export async function submitPhotoCheckOut(input: {
     where: { employeeId_date: { employeeId: employee.id, date: today } },
   });
 
-  if (!existing?.checkIn) {
-    throw new PhotoAttendanceError("لم يُسجَّل حضور لهذا اليوم", 400);
-  }
-
-  if (
-    existing.checkInMethod === Method.PHOTO &&
-    existing.checkInVerificationStatus !== VerificationStatus.APPROVED
-  ) {
-    if (existing.checkInVerificationStatus === VerificationStatus.PENDING) {
-      throw new PhotoAttendanceError(
-        "انتظر تأكيد حضورك أولاً قبل تسجيل الانصراف",
-        400
-      );
-    }
-    throw new PhotoAttendanceError(
-      "حضورك مرفوض — سجّل حضوراً جديداً أولاً",
-      400
-    );
-  }
-
   let mode;
   try {
     mode = resolveCheckOutMode(existing);
   } catch (error) {
     toPhotoAttendanceError(error);
   }
-  const previousPhotoUrl = existing.checkOutPhotoUrl ?? null;
+  const previousPhotoUrl = existing?.checkOutPhotoUrl ?? null;
 
-  // لا نغيّر الحالة إلى انصراف مبكر قبل تأكيد المراجعة
-  const pendingStatus = existing.status;
+  // بدون حضور: ABSENT. مع حضور: نُبقي الحالة الحالية حتى تأكيد المراجعة
+  const pendingStatus = existing?.checkIn
+    ? existing.status
+    : Status.ABSENT;
 
   const photoPath = await uploadEmployeePhoto(
     employee.id,
@@ -336,42 +318,76 @@ export async function submitPhotoCheckOut(input: {
   let displayTime = now;
   let status = pendingStatus;
 
+  const checkoutData = {
+    checkOut: now,
+    checkOutMethod: Method.PHOTO,
+    checkOutPhotoUrl: photoPath,
+    checkOutPhotoAttempts: 1,
+    checkOutShiftId: input.shiftId,
+    checkOutVerificationStatus: VerificationStatus.PENDING,
+    checkOutRejectionReason: null,
+    checkOutReviewedAt: null,
+    checkOutReviewedById: null,
+    checkOutReviewedByName: null,
+  };
+
   try {
     if (mode === "create") {
-      const updated = await prisma.attendance.updateMany({
-        where: {
-          id: existing.id,
-          checkOut: null,
-        },
-        data: {
-          checkOut: now,
-          checkOutMethod: Method.PHOTO,
-          checkOutPhotoUrl: photoPath,
-          checkOutPhotoAttempts: 1,
-          checkOutShiftId: input.shiftId,
-          checkOutVerificationStatus: VerificationStatus.PENDING,
-          checkOutRejectionReason: null,
-          checkOutReviewedAt: null,
-          checkOutReviewedById: null,
-          checkOutReviewedByName: null,
-        },
-      });
+      if (!existing) {
+        try {
+          const created = await prisma.attendance.create({
+            data: {
+              employeeId: employee.id,
+              date: today,
+              status: Status.ABSENT,
+              ...checkoutData,
+            },
+          });
+          nextAttempts = 1;
+          displayTime = created.checkOut ?? now;
+          status = created.status;
+        } catch (error) {
+          await deleteUploadedPhotoSafe(photoPath);
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          ) {
+            throw new PhotoAttendanceError(
+              "تعذر إكمال التسجيل بسبب طلب متزامن — أعد المحاولة",
+              409
+            );
+          }
+          throw error;
+        }
+      } else {
+        const updated = await prisma.attendance.updateMany({
+          where: {
+            id: existing.id,
+            checkOut: null,
+          },
+          data: {
+            ...checkoutData,
+            // لا نفرض ABSENT إذا كان هناك حضور مسبقاً
+            ...(existing.checkIn ? {} : { status: Status.ABSENT }),
+          },
+        });
 
-      if (updated.count === 0) {
-        await deleteUploadedPhotoSafe(photoPath);
-        throw new PhotoAttendanceError(
-          "تعذر إكمال التسجيل بسبب طلب متزامن — أعد المحاولة",
-          409
-        );
+        if (updated.count === 0) {
+          await deleteUploadedPhotoSafe(photoPath);
+          throw new PhotoAttendanceError(
+            "تعذر إكمال التسجيل بسبب طلب متزامن — أعد المحاولة",
+            409
+          );
+        }
+
+        nextAttempts = 1;
+        displayTime = now;
+        status = pendingStatus;
       }
-
-      nextAttempts = 1;
-      displayTime = now;
-      status = pendingStatus;
     } else if (mode === "retry_pending") {
       const updated = await prisma.attendance.updateMany({
         where: {
-          id: existing.id,
+          id: existing!.id,
           checkOutVerificationStatus: VerificationStatus.PENDING,
           checkOutPhotoAttempts: { lt: MAX_PHOTO_SUBMIT_ATTEMPTS },
         },
@@ -397,7 +413,7 @@ export async function submitPhotoCheckOut(input: {
       }
 
       const row = await prisma.attendance.findUniqueOrThrow({
-        where: { id: existing.id },
+        where: { id: existing!.id },
       });
       nextAttempts = row.checkOutPhotoAttempts;
       displayTime = row.checkOut ?? now;
@@ -405,24 +421,13 @@ export async function submitPhotoCheckOut(input: {
     } else {
       const updated = await prisma.attendance.updateMany({
         where: {
-          id: existing.id,
+          id: existing!.id,
           OR: [
             { checkOutVerificationStatus: VerificationStatus.REJECTED },
             { checkOutVerificationStatus: null },
           ],
         },
-        data: {
-          checkOut: now,
-          checkOutMethod: Method.PHOTO,
-          checkOutPhotoUrl: photoPath,
-          checkOutPhotoAttempts: 1,
-          checkOutShiftId: input.shiftId,
-          checkOutVerificationStatus: VerificationStatus.PENDING,
-          checkOutRejectionReason: null,
-          checkOutReviewedAt: null,
-          checkOutReviewedById: null,
-          checkOutReviewedByName: null,
-        },
+        data: checkoutData,
       });
 
       if (updated.count === 0) {
@@ -503,21 +508,21 @@ export async function reviewPhotoAttendance(input: {
   if (
     !isCheckIn &&
     input.action === "approve" &&
-    attendance.checkOut &&
-    attendance.checkIn
+    attendance.checkOut
   ) {
-    const checkInShift = attendance.checkInShiftId
+    const shiftId = attendance.checkOutShiftId ?? attendance.checkInShiftId;
+    const shiftRow = shiftId
       ? await prisma.workSchedule.findUnique({
-          where: { id: attendance.checkInShiftId },
+          where: { id: shiftId },
           select: employeeShiftSelect,
         })
       : null;
     const resolvedShift = await resolveEmployeeShiftAsync(
       {
         customEndTime: attendance.employee.customEndTime,
-        shift: checkInShift,
+        shift: shiftRow,
       },
-      attendance.checkIn
+      attendance.checkIn ?? attendance.checkOut
     );
     if (resolvedShift) {
       const earlyStatus = getCheckoutStatus(
@@ -576,6 +581,101 @@ export async function reviewPhotoAttendance(input: {
 
   return {
     message: `تم ${actionLabel} ${eventLabel} لـ ${attendance.employee.name}`,
+    employeeName: attendance.employee.name,
+  };
+}
+
+/** حذف صورة مراجعة (حضور أو انصراف) ومسح حقول الحدث — للمدير فقط عبر الصلاحيات */
+export async function deletePhotoReviewEvent(input: {
+  attendanceId: string;
+  event: "checkin" | "checkout";
+}) {
+  const attendance = await prisma.attendance.findUnique({
+    where: { id: input.attendanceId },
+    include: {
+      employee: { select: { name: true } },
+    },
+  });
+
+  if (!attendance) {
+    throw new PhotoAttendanceError("سجل الحضور غير موجود", 404);
+  }
+
+  const isCheckIn = input.event === "checkin";
+  const method = isCheckIn ? attendance.checkInMethod : attendance.checkOutMethod;
+  const photoPath = isCheckIn
+    ? attendance.checkInPhotoUrl
+    : attendance.checkOutPhotoUrl;
+  const hasEvent = isCheckIn ? !!attendance.checkIn : !!attendance.checkOut;
+  const hasVerification = isCheckIn
+    ? attendance.checkInVerificationStatus != null
+    : attendance.checkOutVerificationStatus != null;
+
+  if (method !== Method.PHOTO && !photoPath && !hasVerification) {
+    throw new PhotoAttendanceError("لا توجد صورة مراجعة لحذفها", 400);
+  }
+
+  if (!hasEvent && !hasVerification && !photoPath) {
+    throw new PhotoAttendanceError("لا توجد صورة مراجعة لحذفها", 400);
+  }
+
+  if (isCheckIn) {
+    const hasCheckOut = !!attendance.checkOut;
+    if (!hasCheckOut) {
+      await prisma.attendance.delete({ where: { id: attendance.id } });
+    } else {
+      await prisma.attendance.update({
+        where: { id: attendance.id },
+        data: {
+          checkIn: null,
+          checkInMethod: null,
+          checkInPhotoUrl: null,
+          checkInPhotoAttempts: 0,
+          checkInShiftId: null,
+          checkInVerificationStatus: null,
+          checkInRejectionReason: null,
+          checkInReviewedAt: null,
+          checkInReviewedById: null,
+          checkInReviewedByName: null,
+          status: Status.ABSENT,
+        },
+      });
+    }
+  } else {
+    let status = attendance.status;
+    if (attendance.checkIn) {
+      // أعد حالة اليوم بناءً على الحضور فقط إن وُجد
+      status =
+        attendance.status === Status.EARLY_LEAVE
+          ? Status.PRESENT
+          : attendance.status;
+    }
+
+    await prisma.attendance.update({
+      where: { id: attendance.id },
+      data: {
+        checkOut: null,
+        checkOutMethod: null,
+        checkOutPhotoUrl: null,
+        checkOutPhotoAttempts: 0,
+        checkOutShiftId: null,
+        checkOutVerificationStatus: null,
+        checkOutRejectionReason: null,
+        checkOutReviewedAt: null,
+        checkOutReviewedById: null,
+        checkOutReviewedByName: null,
+        status,
+      },
+    });
+  }
+
+  if (photoPath) {
+    await deleteUploadedPhotoSafe(photoPath);
+  }
+
+  const eventLabel = isCheckIn ? "الحضور" : "الانصراف";
+  return {
+    message: `تم حذف صورة ${eventLabel} لـ ${attendance.employee.name}`,
     employeeName: attendance.employee.name,
   };
 }

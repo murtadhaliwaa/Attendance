@@ -12,7 +12,6 @@ import { ShiftsSettings } from "@/components/dashboard/settings/shifts-settings"
 import { getDepartmentRows } from "@/lib/departments";
 import { ensureDefaultShifts } from "@/lib/shifts";
 import { requirePagePermission } from "@/lib/page-auth";
-import { ROLE_LABELS } from "@/lib/permissions";
 import { prisma, withDbRetry } from "@/lib/prisma";
 import type { ShiftRow } from "@/lib/schedule-types";
 
@@ -72,7 +71,6 @@ export default async function SettingsPage() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-right">الاسم</TableHead>
                 <TableHead className="text-right">البريد</TableHead>
-                <TableHead className="text-right">الدور</TableHead>
                 <TableHead className="text-right">الحالة</TableHead>
               </TableRow>
             </TableHeader>
@@ -84,9 +82,6 @@ export default async function SettingsPage() {
                     <span dir="ltr" className="inline-block">
                       {user.email}
                     </span>
-                  </TableCell>
-                  <TableCell className="text-text-muted">
-                    {ROLE_LABELS[user.role] ?? user.role}
                   </TableCell>
                   <TableCell className="text-text-muted">
                     {user.isActive ? "نشط" : "موقوف"}

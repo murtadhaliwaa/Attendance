@@ -195,14 +195,14 @@ async function main() {
     prisma.systemUser.create({
       data: {
         email: "hr@company.com",
-        name: "سارة القحطاني",
+        name: "المدير",
         role: Role.MANAGER,
       },
     }),
     prisma.systemUser.create({
       data: {
         email: "inquiry@company.com",
-        name: "فهد العنزي",
+        name: "موظف الاستعلامات",
         role: Role.INQUIRY_CLERK,
       },
     }),

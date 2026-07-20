@@ -59,9 +59,7 @@ export function getBlockReason(
     return "already_checkin";
   }
 
-  if (!today.hasCheckIn || checkInStatus === "REJECTED") return "no_checkin";
-  if (checkInStatus === "PENDING") return "no_checkin";
-
+  // الانصراف مسموح بدون حضور مسبق
   if (!today.hasCheckOut) return null;
   if (checkOutStatus === "REJECTED") return null;
   if (checkOutStatus === "PENDING") {

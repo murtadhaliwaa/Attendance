@@ -122,31 +122,7 @@ export async function adminRecordCheckOut(employee: EmployeeWithShift) {
     where: { employeeId_date: { employeeId: employee.id, date: today } },
   });
 
-  if (!existing?.checkIn) {
-    throw new AdminAttendanceError("لم يُسجَّل حضور لهذا الموظف اليوم", 400);
-  }
-
-  if (
-    existing.checkInMethod === Method.PHOTO &&
-    existing.checkInVerificationStatus === VerificationStatus.PENDING
-  ) {
-    throw new AdminAttendanceError(
-      "لا يمكن تسجيل انصراف يدوي — حضور الصورة ما زال بانتظار التأكيد",
-      400
-    );
-  }
-
-  if (
-    existing.checkInMethod === Method.PHOTO &&
-    existing.checkInVerificationStatus === VerificationStatus.REJECTED
-  ) {
-    throw new AdminAttendanceError(
-      "الحضور بالصورة مرفوض — سجّل حضوراً جديداً أولاً",
-      400
-    );
-  }
-
-  if (existing.checkOut) {
+  if (existing?.checkOut) {
     if (existing.checkOutVerificationStatus === VerificationStatus.PENDING) {
       throw new AdminAttendanceError(
         "انصراف بالصورة بانتظار التأكيد — أكّد/ارفض من المراجعات أو امسح الانصراف أولاً",
@@ -165,8 +141,9 @@ export async function adminRecordCheckOut(employee: EmployeeWithShift) {
     }
   }
 
-  let status = existing.status;
-  const shift = await resolveEmployeeShiftAsync(employee, existing.checkIn);
+  let status = existing?.checkIn ? existing.status : Status.ABSENT;
+  const timingRef = existing?.checkIn ?? now;
+  const shift = await resolveEmployeeShiftAsync(employee, timingRef);
 
   if (shift) {
     const earlyStatus = getCheckoutStatus(now, shift);
@@ -175,24 +152,33 @@ export async function adminRecordCheckOut(employee: EmployeeWithShift) {
     }
   }
 
-  const previousPhoto = existing.checkOutPhotoUrl;
+  const previousPhoto = existing?.checkOutPhotoUrl;
+  const checkoutFields = {
+    checkOut: now,
+    status,
+    checkOutMethod: Method.MANUAL,
+    checkOutPhotoUrl: null as string | null,
+    checkOutPhotoAttempts: 0,
+    checkOutShiftId: employee.shiftId,
+    checkOutVerificationStatus: null as VerificationStatus | null,
+    checkOutRejectionReason: null as string | null,
+    checkOutReviewedAt: null as Date | null,
+    checkOutReviewedById: null as string | null,
+    checkOutReviewedByName: null as string | null,
+  };
 
-  const attendance = await prisma.attendance.update({
-    where: { id: existing.id },
-    data: {
-      checkOut: now,
-      status,
-      checkOutMethod: Method.MANUAL,
-      checkOutPhotoUrl: null,
-      checkOutPhotoAttempts: 0,
-      checkOutShiftId: employee.shiftId,
-      checkOutVerificationStatus: null,
-      checkOutRejectionReason: null,
-      checkOutReviewedAt: null,
-      checkOutReviewedById: null,
-      checkOutReviewedByName: null,
-    },
-  });
+  const attendance = existing
+    ? await prisma.attendance.update({
+        where: { id: existing.id },
+        data: checkoutFields,
+      })
+    : await prisma.attendance.create({
+        data: {
+          employeeId: employee.id,
+          date: today,
+          ...checkoutFields,
+        },
+      });
 
   await deletePhotosSafe(previousPhoto);
 

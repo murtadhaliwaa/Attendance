@@ -36,31 +36,26 @@ export async function GET(request: Request) {
   const hasCheckIn = !!attendance?.checkIn;
   const hasCheckOut = !!attendance?.checkOut;
 
-  let nextAction: "checkin" | "checkout" | "already_checkin" | "done" = "checkin";
+  let nextAction: "checkin" | "checkout" | "already_checkin" | "done" =
+    "checkin";
 
-  if (!hasCheckIn || attendance?.checkInVerificationStatus === "REJECTED") {
-    nextAction = "checkin";
-  } else if (
+  const checkInRetryable =
     attendance?.checkInVerificationStatus === "PENDING" &&
-    Math.max(attendance.checkInPhotoAttempts ?? 1, 1) < MAX_PHOTO_SUBMIT_ATTEMPTS
-  ) {
+    Math.max(attendance.checkInPhotoAttempts ?? 1, 1) < MAX_PHOTO_SUBMIT_ATTEMPTS;
+
+  const checkOutRetryable =
+    attendance?.checkOutVerificationStatus === "PENDING" &&
+    Math.max(attendance.checkOutPhotoAttempts ?? 1, 1) < MAX_PHOTO_SUBMIT_ATTEMPTS;
+
+  if (hasCheckOut && attendance?.checkOutVerificationStatus !== "REJECTED") {
+    nextAction = checkOutRetryable ? "checkout" : "done";
+  } else if (!hasCheckIn || attendance?.checkInVerificationStatus === "REJECTED") {
+    // يمكن الحضور أو الانصراف مباشرة
     nextAction = "checkin";
-  } else if (hasCheckOut && attendance?.checkOutVerificationStatus !== "REJECTED") {
-    if (
-      attendance?.checkOutVerificationStatus === "PENDING" &&
-      Math.max(attendance.checkOutPhotoAttempts ?? 1, 1) < MAX_PHOTO_SUBMIT_ATTEMPTS
-    ) {
-      nextAction = "checkout";
-    } else {
-      nextAction = "done";
-    }
-  } else if (
-    attendance?.checkInVerificationStatus === "APPROVED" ||
-    attendance?.checkInMethod !== "PHOTO"
-  ) {
-    nextAction = "checkout";
+  } else if (checkInRetryable) {
+    nextAction = "checkin";
   } else {
-    nextAction = "already_checkin";
+    nextAction = "checkout";
   }
 
   return NextResponse.json({

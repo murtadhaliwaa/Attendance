@@ -127,6 +127,7 @@ export function EmployeesManager({
 
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
+  const [shiftFilter, setShiftFilter] = useState("all-shifts");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("active");
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
@@ -164,6 +165,7 @@ export function EmployeesManager({
       if (status === "active" && !employee.isActive) return false;
       if (status === "inactive" && employee.isActive) return false;
       if (department !== "all" && employee.department !== department) return false;
+      if (shiftFilter !== "all-shifts" && employee.shiftId !== shiftFilter) return false;
 
       if (!query) return true;
 
@@ -173,7 +175,7 @@ export function EmployeesManager({
         employee.department.toLowerCase().includes(query)
       );
     });
-  }, [employees, search, department, status]);
+  }, [employees, search, department, shiftFilter, status]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -337,6 +339,31 @@ export function EmployeesManager({
                   {departments.map((dept) => (
                     <SelectItem key={dept} value={dept}>
                       {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={shiftFilter}
+                onValueChange={(value) => {
+                  setShiftFilter(value ?? "all-shifts");
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="الشفت">
+                    {shiftFilter === "all-shifts"
+                      ? "كل الشفتات"
+                      : (shifts.find((s) => s.id === shiftFilter)?.name ??
+                        "الشفت")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-shifts">كل الشفتات</SelectItem>
+                  {shifts.map((shift) => (
+                    <SelectItem key={shift.id} value={shift.id}>
+                      {shift.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

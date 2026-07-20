@@ -19,12 +19,12 @@ const defaultPassword = resolveAuthSetupPassword();
 const PRODUCTION_USERS = [
   {
     email: "hr@company.com",
-    name: "سارة القحطاني",
+    name: "المدير",
     role: Role.MANAGER,
   },
   {
     email: "inquiry@company.com",
-    name: "فهد العنزي",
+    name: "موظف الاستعلامات",
     role: Role.INQUIRY_CLERK,
   },
 ] as const;

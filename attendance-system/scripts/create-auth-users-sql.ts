@@ -11,7 +11,7 @@ config({ path: path.join(projectRoot, ".env") });
 const defaultPassword = resolveAuthSetupPassword();
 
 const USERS = [
-  { email: "inquiry@company.com", name: "فهد العنزي" },
+  { email: "inquiry@company.com", name: "موظف الاستعلامات" },
 ];
 
 async function main() {

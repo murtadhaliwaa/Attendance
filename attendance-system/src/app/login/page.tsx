@@ -46,7 +46,7 @@ export default function LoginPage() {
                   </span>
                 </p>
                 <p>
-                  موظف استعلامات (عرض كل الصفحات — إضافة موظف فقط):{" "}
+                  موظف استعلامات (إضافة موظف + مراجعة الصور):{" "}
                   <span dir="ltr" className="text-text-primary">
                     inquiry@company.com
                   </span>

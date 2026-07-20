@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/api-auth";
 import {
   PhotoAttendanceError,
+  deletePhotoReviewEvent,
   reviewPhotoAttendance,
 } from "@/lib/photo-attendance";
 
@@ -46,6 +47,40 @@ export async function POST(
     console.error(`POST /api/attendance/reviews/${params.id}:`, error);
     return NextResponse.json(
       { error: "فشل تنفيذ المراجعة" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const auth = await requirePermission("attendance:review-delete");
+  if (auth.error) return auth.error;
+
+  let body: { event?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "بيانات الطلب غير صالحة" }, { status: 400 });
+  }
+
+  const event = body.event === "checkout" ? "checkout" : "checkin";
+
+  try {
+    const result = await deletePhotoReviewEvent({
+      attendanceId: params.id,
+      event,
+    });
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof PhotoAttendanceError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error(`DELETE /api/attendance/reviews/${params.id}:`, error);
+    return NextResponse.json(
+      { error: "فشل حذف صورة المراجعة" },
       { status: 500 }
     );
   }

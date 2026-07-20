@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, History, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, History, Loader2, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { parseJsonResponse } from "@/lib/api-utils";
 import { formatVerificationLabel } from "@/lib/attendance-verification";
 import { invalidatePendingReviewCount } from "@/hooks/use-pending-review-count";
+import { usePermission } from "@/components/dashboard/role-context";
 import type { VerificationStatus } from "@prisma/client";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,9 @@ function statusBadgeClass(status: VerificationStatus): string {
 }
 
 export function ReviewQueueManager() {
+  const canViewHistory = usePermission("attendance:review-history");
+  const canDelete = usePermission("attendance:review-delete");
+
   const [tab, setTab] = useState<ReviewTab>("pending");
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -48,6 +52,13 @@ export function ReviewQueueManager() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ReviewItem | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<ReviewItem | null>(null);
+
+  useEffect(() => {
+    if (!canViewHistory && tab === "history") {
+      setTab("pending");
+    }
+  }, [canViewHistory, tab]);
 
   const loadQueue = useCallback(async (scope: ReviewTab) => {
     setLoading(true);
@@ -57,8 +68,9 @@ export function ReviewQueueManager() {
       const data = await parseJsonResponse<{
         pendingCount: number;
         items: ReviewItem[];
+        error?: string;
       }>(res);
-      if (!res.ok) throw new Error("فشل تحميل قائمة المراجعة");
+      if (!res.ok) throw new Error(data.error ?? "فشل تحميل قائمة المراجعة");
 
       const nextItems =
         scope === "history"
@@ -114,6 +126,29 @@ export function ReviewQueueManager() {
     }
   }
 
+  async function handleDelete(item: ReviewItem) {
+    setActionId(item.id);
+    try {
+      const res = await fetch(`/api/attendance/reviews/${item.attendanceId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event: item.event }),
+      });
+      const data = await parseJsonResponse<{ message?: string; error?: string }>(
+        res
+      );
+      if (!res.ok) throw new Error(data.error ?? "فشل حذف الصورة");
+      toast.success(data.message ?? "تم حذف الصورة");
+      setDeleteTarget(null);
+      invalidatePendingReviewCount();
+      await loadQueue(tab);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "فشل حذف الصورة");
+    } finally {
+      setActionId(null);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -124,12 +159,14 @@ export function ReviewQueueManager() {
             label="معلّقة"
             count={pendingCount}
           />
-          <TabButton
-            active={tab === "history"}
-            onClick={() => setTab("history")}
-            label="السجل"
-            icon={History}
-          />
+          {canViewHistory && (
+            <TabButton
+              active={tab === "history"}
+              onClick={() => setTab("history")}
+              label="السجل"
+              icon={History}
+            />
+          )}
         </div>
         <Button
           variant="outline"
@@ -245,6 +282,31 @@ export function ReviewQueueManager() {
                         </Button>
                       </div>
                     </div>
+                  ) : deleteTarget?.id === item.id ? (
+                    <div className="space-y-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3">
+                      <p className="text-sm text-rose-200">
+                        حذف صورة{" "}
+                        {item.event === "checkin" ? "الحضور" : "الانصراف"} ومسح
+                        هذا الطلب؟
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={actionId === item.id}
+                          onClick={() => void handleDelete(item)}
+                        >
+                          تأكيد الحذف
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteTarget(null)}
+                        >
+                          إلغاء
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -264,7 +326,61 @@ export function ReviewQueueManager() {
                         <XCircle className="size-4" />
                         رفض
                       </Button>
+                      {canDelete && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={actionId === item.id}
+                          onClick={() => setDeleteTarget(item)}
+                          className="text-rose-300 hover:text-rose-200"
+                        >
+                          <Trash2 className="size-4" />
+                          حذف الصورة
+                        </Button>
+                      )}
                     </div>
+                  )}
+                </>
+              )}
+
+              {tab === "history" && canDelete && (
+                <>
+                  {deleteTarget?.id === item.id ? (
+                    <div className="space-y-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3">
+                      <p className="text-sm text-rose-200">
+                        حذف صورة{" "}
+                        {item.event === "checkin" ? "الحضور" : "الانصراف"} من
+                        السجل؟
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={actionId === item.id}
+                          onClick={() => void handleDelete(item)}
+                        >
+                          تأكيد الحذف
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteTarget(null)}
+                        >
+                          إلغاء
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={actionId === item.id}
+                      onClick={() => setDeleteTarget(item)}
+                      className="text-rose-300 hover:text-rose-200"
+                    >
+                      <Trash2 className="size-4" />
+                      حذف الصورة
+                    </Button>
                   )}
                 </>
               )}
@@ -328,4 +444,3 @@ function PhotoCompare({ title, url }: { title: string; url: string | null }) {
     </div>
   );
 }
-

@@ -68,11 +68,11 @@ describe("kiosk-scanner-types", () => {
   });
 
   describe("getBlockReason — checkout", () => {
-    it("يمنع إذا لم يسجّل الحضور", () => {
-      expect(getBlockReason("checkout", today())).toBe("no_checkin");
+    it("يسمح بالانصراف بدون حضور مسبق", () => {
+      expect(getBlockReason("checkout", today())).toBeNull();
     });
 
-    it("يمنع إذا حضورك صورة بانتظار التأكيد", () => {
+    it("يسمح بالانصراف حتى لو الحضور بانتظار التأكيد", () => {
       expect(
         getBlockReason(
           "checkout",
@@ -82,7 +82,7 @@ describe("kiosk-scanner-types", () => {
             checkInPhotoAttempts: 1,
           })
         )
-      ).toBe("no_checkin");
+      ).toBeNull();
     });
 
     it("يمنع إذا سبق تسجيل الانصراف", () => {
@@ -150,11 +150,6 @@ describe("kiosk-scanner-types", () => {
         })
       );
       expect(msg).toContain("وصلت للحد الأقصى");
-    });
-
-    it("يطلب تسجيل الحضور أولاً عند no_checkin", () => {
-      const msg = blockMessage("checkout", "no_checkin", "محمد", today());
-      expect(msg).toContain("سجّل حضورك");
     });
 
     it("يذكر وقت الانصراف عند already_done", () => {

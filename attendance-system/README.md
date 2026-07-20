@@ -85,7 +85,7 @@ npm run dev
 | الحساب | الدور |
 |--------|-------|
 | `hr@company.com` | مدير — صلاحيات كاملة |
-| `inquiry@company.com` | استعلامات — عرض + إضافة موظف + مراجعة الصور |
+| `inquiry@company.com` | استعلامات — إضافة موظف + مراجعة الصور |
 
 إعداد: عيّن `AUTH_SETUP_PASSWORD` ثم `npm run auth:setup-production`
 
