@@ -102,8 +102,7 @@ export function useKioskPhotoScanner(mode: KioskMode) {
   const showBlockedMessage = useCallback(
     (employeeName: string, reason: BlockReason, today: TodayStatus) => {
       const message = blockMessage(mode, reason, employeeName, today);
-      const action: AttendanceAction =
-        reason === "no_checkin" ? "no_checkin" : reason;
+      const action: AttendanceAction = reason;
 
       setResult({
         message,

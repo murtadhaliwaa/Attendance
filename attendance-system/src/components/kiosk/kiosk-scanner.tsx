@@ -61,8 +61,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
 
   const isBlockedStatus =
     result?.action === "already_checkin" ||
-    result?.action === "already_done" ||
-    result?.action === "no_checkin";
+    result?.action === "already_done";
 
   const isPendingSubmit =
     !!result &&

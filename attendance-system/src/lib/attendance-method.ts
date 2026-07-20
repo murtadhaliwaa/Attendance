@@ -18,5 +18,6 @@ export function formatAttendanceMethodLabel(
   if (method === "EMERGENCY_CODE") {
     return "سجل قديم";
   }
-  return "بصمة الوجه";
+  // Method.FACE — سجلات تاريخية فقط
+  return "سجل قديم";
 }

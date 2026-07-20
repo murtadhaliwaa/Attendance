@@ -360,6 +360,12 @@ export async function getEmployeeReport(
           const pending =
             record.checkInVerificationStatus === "PENDING" ||
             record.checkOutVerificationStatus === "PENDING";
+          const checkoutPending =
+            record.checkOutMethod === "PHOTO" &&
+            record.checkOutVerificationStatus === "PENDING";
+          const checkoutRejected =
+            record.checkOutMethod === "PHOTO" &&
+            record.checkOutVerificationStatus === "REJECTED";
 
           return {
             date: dayKey,
@@ -371,7 +377,11 @@ export async function getEmployeeReport(
                 record.checkInVerificationStatus === "REJECTED")
                 ? formatTimeAr(record.checkIn)
                 : null,
-            checkOut: null,
+            checkOut:
+              record.checkOut &&
+              (checkOutCounted || checkoutPending || checkoutRejected)
+                ? formatTimeAr(record.checkOut)
+                : null,
             isWorkingDay: true,
             lateMinutes: null,
             checkInMethod: record.checkInMethod,

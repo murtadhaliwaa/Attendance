@@ -41,6 +41,7 @@ npm run dev
 | `npm run storage:setup-photos` | إنشاء bucket و سياسات Storage |
 | `npm run storage:cleanup-photos` | تنظيف صور الحضور القديمة |
 | `npm run env:validate` | التحقق من `.env` |
+| `npm run env:validate:production` | تحقق صارم للإنتاج (`CRON_SECRET` إلزامي) |
 
 ## طريقة العمل
 
@@ -58,7 +59,7 @@ npm run dev
 | `DATABASE_URL` | pooler منفذ 6543 + `pgbouncer=true` |
 | `DIRECT_URL` | منفذ 5432 للـ migrations |
 | `KIOSK_API_KEY` | سر عشوائي طويل (≥ 32 حرفاً) |
-| `CRON_SECRET` | لحماية cron تنظيف الصور |
+| `CRON_SECRET` | إلزامي في الإنتاج — لحماية cron تنظيف الصور |
 | `SUPABASE_S3_ACCESS_KEY_ID` · `SUPABASE_S3_SECRET_ACCESS_KEY` · `SUPABASE_S3_REGION` | رفع الصور عبر S3 |
 | `AUTH_SETUP_PASSWORD` | فقط محلياً عند إنشاء الحسابات — ليست لمتغيرات Runtime العامة |
 | `UPSTASH_REDIS_REST_*` | اختياري — rate limit موزع |
@@ -76,9 +77,9 @@ npm run dev
 ## أمان الكشك (الشبكة الداخلية)
 
 - جلسة الكشك تُمنح عند فتح `/kiosk` — مصمَّم لتابلت الشركة على الشبكة الداخلية.
-- **لا تنشر رابط `/kiosk` على الإنترنت العام** بدون VPN أو تقييد IP أو حماية إضافية.
 - في الإنتاج تُخفى رابط «جهاز التسجيل» من صفحة `/login`؛ افتح التابلت مباشرة على `/kiosk/setup` ثم الحضور/الانصراف.
 - بعد الإعداد غيّر كلمات مرور `hr@…` و `inquiry@…` إن كانت ما زالت كلمة المرور الافتراضية القديمة `Admin@123456`.
+- إن كان الموقع عاماً على الإنترنت، يُفضّل تقييد الوصول بشبكة داخلية أو VPN.
 
 ## الأدوار
 

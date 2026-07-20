@@ -12,7 +12,7 @@ const notoSansArabic = Noto_Sans_Arabic({
 
 export const metadata: Metadata = {
   title: "نظام الحضور والانصراف",
-  description: "نظام تسجيل حضور وانصراف الموظفين بالتعرف على الوجه",
+  description: "نظام تسجيل حضور وانصراف الموظفين بالصورة مع مراجعة الاستعلامات",
   applicationName: "نظام الحضور",
   appleWebApp: {
     capable: true,

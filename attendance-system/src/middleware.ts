@@ -106,7 +106,6 @@ export const config = {
     "/admin/:path*",
     "/login",
     "/kiosk/:path*",
-    // تجديد جلسة Supabase قبل معالجات API الخاصة بلوحة التحكم.
     "/api/employees/:path*",
     "/api/reports/:path*",
     "/api/departments/:path*",
@@ -114,4 +113,3 @@ export const config = {
     "/api/alerts/:path*",
   ],
 };
-

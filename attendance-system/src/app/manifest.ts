@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "نظام الحضور والانصراف",
     short_name: "نظام الحضور",
-    description: "نظام تسجيل حضور وانصراف الموظفين بالتعرف على الوجه",
+    description: "نظام تسجيل حضور وانصراف الموظفين بالصورة مع مراجعة الاستعلامات",
     start_url: "/",
     scope: "/",
     display: "standalone",

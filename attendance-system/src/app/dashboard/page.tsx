@@ -51,7 +51,10 @@ export default async function DashboardPage() {
     getShiftTimingsBundle(),
     prisma.employee.count({ where: { isActive: true } }),
     prisma.attendance.findMany({
-      where: { date: today, checkIn: { not: null } },
+      where: {
+        date: today,
+        OR: [{ checkIn: { not: null } }, { checkOut: { not: null } }],
+      },
       select: {
         status: true,
         checkInMethod: true,
@@ -61,9 +64,12 @@ export default async function DashboardPage() {
       },
     }),
     prisma.attendance.findMany({
-      where: { date: today, checkIn: { not: null } },
-      take: 5,
-      orderBy: { checkIn: "desc" },
+      where: {
+        date: today,
+        OR: [{ checkIn: { not: null } }, { checkOut: { not: null } }],
+      },
+      take: 8,
+      orderBy: [{ createdAt: "desc" }],
       select: {
         id: true,
         checkIn: true,
@@ -117,14 +123,22 @@ export default async function DashboardPage() {
       record.checkOutMethod === "PHOTO" &&
       record.checkOutVerificationStatus === "PENDING";
 
-    const shift = resolveEmployeeShift(record.employee, record.checkIn, {
-      allShifts,
-      defaultShift,
-    });
-    const { status, lateMinutes } = getEffectiveCheckInStatus(
-      record.checkIn,
-      shift
+    const shift = resolveEmployeeShift(
+      record.employee,
+      record.checkIn ?? record.checkOut,
+      {
+        allShifts,
+        defaultShift,
+      }
     );
+    const { status, lateMinutes } = record.checkIn
+      ? getEffectiveCheckInStatus(record.checkIn, shift)
+      : {
+          status: (record.status === "EARLY_LEAVE"
+            ? "EARLY_LEAVE"
+            : "ABSENT") as Status,
+          lateMinutes: 0,
+        };
     const attendanceStatus: Status =
       record.status === "EARLY_LEAVE" && !checkOutPending && !checkOutRejected
         ? record.status

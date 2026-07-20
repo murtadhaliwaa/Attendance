@@ -26,7 +26,6 @@ export function KioskResultPanel({
         : "تم تأكيد الانصراف";
     }
     if (result.action === "already_checkin") return "الحضور مسجّل مسبقاً";
-    if (result.action === "no_checkin") return "يجب تسجيل الحضور أولاً";
     return "الانصراف مسجّل مسبقاً";
   })();
 

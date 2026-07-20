@@ -118,7 +118,7 @@ export function EmployeesManager({
   const canDelete = usePermission("employees:delete");
   const showActions = canUpdate || canDelete;
 
-  // نسخة محلية تُحدَّث فوراً بعد العمليات السريعة (إيقاف/تفعيل/مسح وجه/حذف)
+  // نسخة محلية تُحدَّث فوراً بعد العمليات السريعة (إيقاف/تفعيل/حذف)
   // دون إعادة جلب الصفحة كاملة. تُزامَن مع بيانات الخادم بعد الإضافة/التعديل.
   const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
   useEffect(() => {

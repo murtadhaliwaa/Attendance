@@ -7,16 +7,22 @@ config({ path: path.join(projectRoot, ".env.production.local") });
 config({ path: path.join(projectRoot, ".env.local") });
 config({ path: path.join(projectRoot, ".env") });
 
+const isProduction =
+  process.env.VERCEL_ENV === "production" ||
+  process.env.NODE_ENV === "production" ||
+  process.argv.includes("--production");
+
 const REQUIRED = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "DATABASE_URL",
   "KIOSK_API_KEY",
+  ...(isProduction ? (["CRON_SECRET"] as const) : []),
 ] as const;
 
 const RECOMMENDED = [
   "DIRECT_URL",
-  "CRON_SECRET",
+  ...(isProduction ? [] : (["CRON_SECRET"] as const)),
   "SUPABASE_S3_ACCESS_KEY_ID",
   "SUPABASE_S3_SECRET_ACCESS_KEY",
   "SUPABASE_S3_REGION",
@@ -34,6 +40,10 @@ function isPlaceholder(value: string | undefined): boolean {
 }
 
 function main() {
+  if (isProduction) {
+    console.log("🔎 وضع التحقق: إنتاج (CRON_SECRET إلزامي)\n");
+  }
+
   const missing: string[] = [];
   const placeholders: string[] = [];
 
@@ -73,13 +83,20 @@ function main() {
   }
 
   const cron = process.env.CRON_SECRET?.trim();
-  if (!cron) {
+  if (isProduction) {
+    if (!cron || isPlaceholder(cron) || cron.length < 24) {
+      console.error(
+        "❌ CRON_SECRET في الإنتاج يجب أن يكون سراً عشوائياً قوياً (≥ 24 حرفاً، وليس change-me)"
+      );
+      process.exit(1);
+    }
+  } else if (!cron) {
     console.warn(
-      "⚠️  CRON_SECRET غير مُعد — تنظيف صور الحضور على Vercel لن يعمل في الإنتاج"
+      "⚠️  CRON_SECRET غير مُعد — في الإنتاج تنظيف صور الحضور على Vercel لن يعمل"
     );
   } else if (isPlaceholder(cron) || cron.length < 24) {
     console.warn(
-      "⚠️  CRON_SECRET ضعيف أو افتراضي — عيّن سراً طويلاً عشوائياً في Vercel"
+      "⚠️  CRON_SECRET ضعيف أو افتراضي — عيّن سراً طويلاً عشوائياً قبل الإنتاج"
     );
   }
 
@@ -122,8 +139,9 @@ function main() {
   console.log(`   Supabase: ${url}`);
   console.log(`   Database: ${db.includes("supabase.com") ? "Supabase ✓" : "custom"}`);
   console.log(`   Kiosk key: ${kioskKey.slice(0, 8)}…`);
+  if (cron) console.log("   Cron secret: ✓");
   console.log(
-    "   تذكير: الكشك للشبكة الداخلية فقط — لا تنشر /kiosk على الإنترنت العام"
+    "   تذكير: الكشك للتابلت الداخلي — لا تعتمد على إخفاء الرابط وحده على الإنترنت العام"
   );
 }
 

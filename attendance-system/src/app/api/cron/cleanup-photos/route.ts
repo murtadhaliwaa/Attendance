@@ -8,9 +8,15 @@ export const maxDuration = 60;
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET?.trim();
 
-  // التطوير المحلي بدون سر
   if (!secret) {
-    return process.env.NODE_ENV !== "production";
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "CRON_SECRET غير مُعد في الإنتاج — رُفض طلب تنظيف الصور"
+      );
+      return false;
+    }
+    // التطوير المحلي بدون سر
+    return true;
   }
 
   const auth = request.headers.get("authorization");

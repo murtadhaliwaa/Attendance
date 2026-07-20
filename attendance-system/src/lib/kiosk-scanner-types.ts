@@ -9,13 +9,12 @@ export type KioskState =
   | "success"
   | "error";
 
-export type BlockReason = "already_checkin" | "no_checkin" | "already_done";
+export type BlockReason = "already_checkin" | "already_done";
 
 export type AttendanceAction =
   | "checkin"
   | "checkout"
   | "already_checkin"
-  | "no_checkin"
   | "already_done";
 
 export interface AttendanceResult {
@@ -80,12 +79,6 @@ export function blockMessage(
       return `أنت ${employeeName}، وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر تأكيد موظف الاستعلامات`;
     }
     return `أنت ${employeeName}، حضورك مسجّل مسبقاً (${today.checkInTime ?? ""})`;
-  }
-  if (reason === "no_checkin") {
-    if (today.checkInVerificationStatus === "PENDING") {
-      return `أنت ${employeeName}، انتظر تأكيد حضورك أولاً قبل تسجيل الانصراف`;
-    }
-    return `أنت ${employeeName}، سجّل حضورك أولاً من صفحة الحضور`;
   }
   if (today.checkOutVerificationStatus === "PENDING") {
     return `أنت ${employeeName}، وصلت للحد الأقصى (${MAX_PHOTO_SUBMIT_ATTEMPTS} صور) — انتظر تأكيد موظف الاستعلامات`;

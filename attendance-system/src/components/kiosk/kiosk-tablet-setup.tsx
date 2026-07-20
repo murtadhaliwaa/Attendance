@@ -116,8 +116,8 @@ export function KioskTabletSetup() {
         <CardContent className="space-y-3">
           <CameraFacingSelector />
           <p className="rounded-lg border border-blue-500/25 bg-blue-500/10 px-3 py-2 text-xs text-blue-100">
-            بعد تغيير الكاميرا، أعد تسجيل بصمات الوجوه من نفس الجهاز والكاميرا
-            المختارة.
+            بعد تغيير الكاميرا، صوّر الصور المرجعية من نفس الجهاز والكاميرا
+            المختارة لنتائج أوضح عند المراجعة.
           </p>
           <StatusRow
             ok

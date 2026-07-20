@@ -21,7 +21,8 @@
     "storage:cleanup-photos": "npx tsx scripts/cleanup-attendance-photos.ts",
     "db:migrate:deploy": "npx prisma migrate deploy",
     "db:backfill-departments": "npx tsx scripts/backfill-department-ids.ts",
-    "env:validate": "npx tsx scripts/validate-env.ts"
+    "env:validate": "npx tsx scripts/validate-env.ts",
+    "env:validate:production": "npx tsx scripts/validate-env.ts --production"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1085.0",
