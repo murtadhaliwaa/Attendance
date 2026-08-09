@@ -164,7 +164,23 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     setState("processing");
     setStatusText("جاري التقاط الصورة وإرسالها...");
 
-    const captured = await captureVideoFrameBlob(videoRef.current);
+    // الالتقاط وفحص حالة اليوم مستقلان — تشغيلهما معاً يقصّر زمن الانتظار
+    let captured: Awaited<ReturnType<typeof captureVideoFrameBlob>>;
+    let today: Awaited<ReturnType<typeof getTodayStatus>>;
+    try {
+      [captured, today] = await Promise.all([
+        captureVideoFrameBlob(videoRef.current),
+        getTodayStatus(selectedEmployeeId),
+      ]);
+    } catch (error) {
+      setState("scanning");
+      setStatusText(labels.subtitle);
+      toast.error(
+        error instanceof Error ? error.message : "تعذر تجهيز التسجيل"
+      );
+      return;
+    }
+
     if (!captured) {
       setState("scanning");
       setStatusText(labels.subtitle);
@@ -177,12 +193,12 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     setPreviewUrl(captured.previewUrl);
 
     try {
-      const today = await getTodayStatus(selectedEmployeeId);
       const employee = roster.find((e) => e.id === selectedEmployeeId);
       const employeeName = employee?.name ?? today.employeeName;
 
       const blockReason = getBlockReason(mode, today);
       if (blockReason) {
+        clearPreviewUrl();
         showBlockedMessage(employeeName, blockReason, today);
         return;
       }

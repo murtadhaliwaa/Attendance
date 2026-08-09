@@ -26,7 +26,7 @@ export default function KioskHubPage() {
       </div>
 
       <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
-        <Link href="/kiosk/checkin" className="group block">
+        <Link href="/kiosk/checkin" prefetch className="group block">
           <Card className="h-full border-emerald-500/30 bg-bg-card transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/5">
             <CardHeader className="text-center">
               <div className="mx-auto mb-2 flex size-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300 transition-colors group-hover:bg-emerald-500/25">
@@ -45,7 +45,7 @@ export default function KioskHubPage() {
           </Card>
         </Link>
 
-        <Link href="/kiosk/checkout" className="group block">
+        <Link href="/kiosk/checkout" prefetch className="group block">
           <Card className="h-full border-sky-500/30 bg-bg-card transition-colors hover:border-sky-500/50 hover:bg-sky-500/5">
             <CardHeader className="text-center">
               <div className="mx-auto mb-2 flex size-14 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-300 transition-colors group-hover:bg-sky-500/25">

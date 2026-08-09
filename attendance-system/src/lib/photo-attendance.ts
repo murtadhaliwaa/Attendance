@@ -139,6 +139,18 @@ export async function submitPhotoCheckIn(input: {
 
   const existing = await prisma.attendance.findUnique({
     where: { employeeId_date: { employeeId: employee.id, date: today } },
+    select: {
+      id: true,
+      checkIn: true,
+      checkOut: true,
+      status: true,
+      checkInPhotoUrl: true,
+      checkOutPhotoUrl: true,
+      checkInVerificationStatus: true,
+      checkOutVerificationStatus: true,
+      checkInPhotoAttempts: true,
+      checkOutPhotoAttempts: true,
+    },
   });
 
   let mode;
@@ -311,6 +323,18 @@ export async function submitPhotoCheckOut(input: {
 
   const existing = await prisma.attendance.findUnique({
     where: { employeeId_date: { employeeId: employee.id, date: today } },
+    select: {
+      id: true,
+      checkIn: true,
+      checkOut: true,
+      status: true,
+      checkInPhotoUrl: true,
+      checkOutPhotoUrl: true,
+      checkInVerificationStatus: true,
+      checkOutVerificationStatus: true,
+      checkInPhotoAttempts: true,
+      checkOutPhotoAttempts: true,
+    },
   });
 
   let mode;
