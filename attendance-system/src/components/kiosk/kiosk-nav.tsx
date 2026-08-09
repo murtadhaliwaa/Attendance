@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Fingerprint,
-  LogIn,
-  LogOut,
-  Monitor,
-  MonitorSmartphone,
-} from "lucide-react";
-import { useKioskTabletMode } from "@/hooks/use-kiosk-tablet-mode";
+import { Fingerprint, LogIn, LogOut, Monitor } from "lucide-react";
 import {
   KeyboardOpenProvider,
   useVisualViewportHeight,
@@ -29,7 +22,6 @@ const kioskItems = [
   { href: "/kiosk", label: "الحضور و الانصراف", icon: Monitor, exact: true },
   { href: "/kiosk/checkin", label: "الحضور", icon: LogIn },
   { href: "/kiosk/checkout", label: "الانصراف", icon: LogOut },
-  { href: "/kiosk/setup", label: "إعداد التابلت", icon: MonitorSmartphone },
 ];
 
 function NavLink({
@@ -210,10 +202,8 @@ export function KioskShell({
   loggedIn: boolean;
 }) {
   const pathname = usePathname();
-  const { enabled: tabletMode } = useKioskTabletMode();
   const isScanner =
     pathname === "/kiosk/checkin" || pathname === "/kiosk/checkout";
-  const immersiveTablet = tabletMode && isScanner;
   const hideMobileNav = isScanner;
   const { height: viewportHeight, offsetTop, keyboardOpen } =
     useVisualViewportHeight(isScanner);
@@ -239,7 +229,7 @@ export function KioskShell({
         }
         data-keyboard-open={keyboardOpen ? "true" : "false"}
       >
-        {!immersiveTablet && <KioskSidebar loggedIn={loggedIn} />}
+        <KioskSidebar loggedIn={loggedIn} />
         <div
           className={cn(
             "flex min-w-0 flex-1 flex-col",

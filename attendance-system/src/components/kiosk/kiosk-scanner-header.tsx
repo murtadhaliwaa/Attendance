@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { LogIn, LogOut } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { KioskTabletExitButton } from "@/components/kiosk/kiosk-tablet-exit";
 import { KioskClock } from "@/components/kiosk/kiosk-clock";
-import { useKioskTabletMode } from "@/hooks/use-kiosk-tablet-mode";
 import type { KioskModeLabels } from "@/lib/kiosk-types";
 import { cn } from "@/lib/utils";
 
@@ -22,8 +20,6 @@ export function KioskScannerHeader({
   accentClockClass,
   accentActionClass,
 }: KioskScannerHeaderProps) {
-  const { enabled: tabletMode } = useKioskTabletMode();
-
   return (
     <div className="mx-auto mb-0.5 w-full max-w-4xl shrink-0 sm:mb-2 [@media(max-height:700px)]:mb-0">
       <div
@@ -31,21 +27,18 @@ export function KioskScannerHeader({
         className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 py-0.5 sm:gap-3 sm:py-1"
       >
         <div className="flex justify-start">
-          {tabletMode ? (
-            <KioskTabletExitButton className={accentActionClass} />
-          ) : (
-            <Link
-              href="/kiosk"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "h-8 shrink-0 px-2.5 text-xs hover:no-underline sm:px-3 sm:text-sm",
-                "[@media(max-height:700px)]:h-7 [@media(max-height:700px)]:px-2",
-                accentActionClass
-              )}
-            >
-              الحضور والانصراف
-            </Link>
-          )}
+          <Link
+            href="/kiosk"
+            aria-label="رجوع"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "h-8 shrink-0 px-2.5 text-xs hover:no-underline sm:px-3 sm:text-sm",
+              "[@media(max-height:700px)]:h-7 [@media(max-height:700px)]:px-2",
+              accentActionClass
+            )}
+          >
+            رجوع
+          </Link>
         </div>
 
         <div className="flex justify-center">

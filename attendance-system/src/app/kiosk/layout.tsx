@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { KioskShell } from "@/components/kiosk/kiosk-nav";
-import { KioskTabletAutoActivate } from "@/components/kiosk/kiosk-tablet-auto";
 import { RoleProvider } from "@/components/dashboard/role-context";
 import { resolveSessionAuth } from "@/lib/session";
 
@@ -24,12 +23,7 @@ export default async function KioskLayout({
     ? await resolveSessionAuth()
     : null;
 
-  const content = (
-    <>
-      <KioskTabletAutoActivate />
-      <KioskShell loggedIn={!!session}>{children}</KioskShell>
-    </>
-  );
+  const content = <KioskShell loggedIn={!!session}>{children}</KioskShell>;
 
   if (!session) {
     return content;

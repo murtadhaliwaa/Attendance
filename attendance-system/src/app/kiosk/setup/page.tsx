@@ -1,13 +1,5 @@
-import { KioskTabletSetup } from "@/components/kiosk/kiosk-tablet-setup";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "إعداد كشك التابلت | نظام الحضور والانصراف",
-};
-
-export default function KioskSetupPage() {
-  return (
-    <div className="flex min-h-full flex-1 items-center justify-center py-6">
-      <KioskTabletSetup />
-    </div>
-  );
+export default function KioskSetupRedirectPage() {
+  redirect("/kiosk");
 }
