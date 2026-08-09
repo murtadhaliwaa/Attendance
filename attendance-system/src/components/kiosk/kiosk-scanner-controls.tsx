@@ -152,6 +152,17 @@ export function KioskScannerControls({
             <Search className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-text-muted sm:right-3 sm:size-4" />
             <Input
               aria-label="تصفية قائمة الموظفين"
+              type="search"
+              name="kiosk-employee-filter"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              inputMode="search"
+              enterKeyHint="search"
+              data-1p-ignore
+              data-lpignore="true"
+              data-form-type="other"
               placeholder={
                 selectedShiftId ? "ابحث..." : "اختر الشفت أولاً"
               }
