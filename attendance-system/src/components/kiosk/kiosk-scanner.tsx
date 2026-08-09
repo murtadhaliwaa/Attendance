@@ -33,6 +33,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
   const scanner = useKioskPhotoScanner(mode);
   const { keyboardOpen } = useVisualViewportHeight(true);
   const [formFocused, setFormFocused] = useState(false);
+  // أخفِ الكاميرا فقط مع الكيبورد الفعلي حتى لا يتحرّك التخطيط أثناء اختيار الاسم
   const compactForKeyboard = keyboardOpen || formFocused;
 
   const {

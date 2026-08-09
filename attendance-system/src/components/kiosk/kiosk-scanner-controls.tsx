@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FocusEvent } from "react";
+import { useMemo, useRef, useState, type FocusEvent, type PointerEvent } from "react";
 import { Camera, Check, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ export function KioskScannerControls({
 }: KioskScannerControlsProps) {
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const selectingRef = useRef(false);
 
   function scrollFieldIntoView(target: HTMLElement) {
     // انتظر فتح الكيبورد ثم حرّك الحقل ليظهر فوقه
@@ -73,8 +74,9 @@ export function KioskScannerControls({
   }
 
   function handleSearchBlur() {
-    // تأخير قصير حتى يمكن الضغط على اقتراح قبل إغلاق القائمة
+    // تأخير قصير حتى لا يُلغى الاختيار بسبب blur قبل pointerdown
     window.setTimeout(() => {
+      if (selectingRef.current) return;
       setSuggestionsOpen(false);
       onFormFocusChange?.(false);
     }, 180);
@@ -136,9 +138,26 @@ export function KioskScannerControls({
   }
 
   function selectEmployee(employee: RosterEmployee) {
+    selectingRef.current = true;
     onEmployeeChange(employee.id);
     setEmployeeSearch(employee.name);
     setSuggestionsOpen(false);
+    onFormFocusChange?.(false);
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    window.setTimeout(() => {
+      selectingRef.current = false;
+    }, 250);
+  }
+
+  function handleEmployeePointerDown(
+    event: PointerEvent<HTMLButtonElement>,
+    employee: RosterEmployee
+  ) {
+    // اختيار فوري عند اللمس حتى لا تضيع الضغطة بسبب إغلاق الكيبورد
+    event.preventDefault();
+    selectEmployee(employee);
   }
 
   function clearSelection() {
@@ -262,8 +281,16 @@ export function KioskScannerControls({
                       selectedEmployeeId === employee.id &&
                         "bg-emerald-500/10 text-emerald-100"
                     )}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => selectEmployee(employee)}
+                    onPointerDown={(event) =>
+                      handleEmployeePointerDown(event, employee)
+                    }
+                    onClick={(event) => {
+                      // احتياطي للمتصفحات التي لا تُطلق pointerdown كما يُتوقع
+                      event.preventDefault();
+                      if (!selectingRef.current) {
+                        selectEmployee(employee);
+                      }
+                    }}
                   >
                     <span className="min-w-0 truncate font-medium text-text-primary">
                       {employee.name}
