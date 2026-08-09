@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
 } from "react";
 import { Camera, Check, Search, X } from "lucide-react";
@@ -54,6 +55,13 @@ export function KioskScannerControls({
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const selectingRef = useRef(false);
+  const pointerStartRef = useRef<{
+    x: number;
+    y: number;
+    pointerId: number;
+  } | null>(null);
+  const pointerMovedRef = useRef(false);
+  const ignoreNextClickRef = useRef(false);
 
   function handleSearchFocus() {
     setSuggestionsOpen(true);
@@ -138,12 +146,73 @@ export function KioskScannerControls({
     }, 250);
   }
 
-  function handleEmployeePointerDown(
+  const TAP_MOVE_THRESHOLD_PX = 10;
+
+  function handleEmployeePointerDown(event: PointerEvent<HTMLButtonElement>) {
+    // لا نمنع الافتراضي حتى يعمل السحب؛ فقط نتتبّع إن كانت ضغطة أم تمرير
+    selectingRef.current = true;
+    pointerMovedRef.current = false;
+    pointerStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      pointerId: event.pointerId,
+    };
+  }
+
+  function handleEmployeePointerMove(event: PointerEvent<HTMLButtonElement>) {
+    const start = pointerStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (Math.hypot(dx, dy) > TAP_MOVE_THRESHOLD_PX) {
+      pointerMovedRef.current = true;
+    }
+  }
+
+  function handleEmployeePointerUp(
     event: PointerEvent<HTMLButtonElement>,
     employee: RosterEmployee
   ) {
-    // اختيار فوري عند اللمس حتى لا تضيع الضغطة بسبب إغلاق الكيبورد
-    event.preventDefault();
+    const start = pointerStartRef.current;
+    pointerStartRef.current = null;
+    if (!start || start.pointerId !== event.pointerId) return;
+
+    // كان سحباً للتمرير — لا تختر اسماً
+    if (pointerMovedRef.current) {
+      ignoreNextClickRef.current = true;
+      window.setTimeout(() => {
+        selectingRef.current = false;
+      }, 200);
+      return;
+    }
+
+    ignoreNextClickRef.current = true;
+    selectEmployee(employee);
+  }
+
+  function handleEmployeePointerCancel() {
+    pointerStartRef.current = null;
+    pointerMovedRef.current = true;
+    ignoreNextClickRef.current = true;
+    window.setTimeout(() => {
+      selectingRef.current = false;
+    }, 200);
+  }
+
+  function handleEmployeeClick(
+    event: MouseEvent<HTMLButtonElement>,
+    employee: RosterEmployee
+  ) {
+    // pointerup يتولى اللمس؛ click احتياطي للفأرة/إمكانية الوصول
+    if (ignoreNextClickRef.current) {
+      ignoreNextClickRef.current = false;
+      event.preventDefault();
+      return;
+    }
+    if (pointerMovedRef.current) {
+      event.preventDefault();
+      return;
+    }
     selectEmployee(employee);
   }
 
@@ -273,20 +342,17 @@ export function KioskScannerControls({
                     role="option"
                     aria-selected={selectedEmployeeId === employee.id}
                     className={cn(
-                      "flex min-h-11 w-full items-center justify-between gap-2 border-b border-bg-border/60 px-3 py-2 text-right text-sm last:border-b-0 hover:bg-bg-elevated active:bg-bg-elevated",
+                      "flex min-h-11 w-full touch-pan-y items-center justify-between gap-2 border-b border-bg-border/60 px-3 py-2 text-right text-sm last:border-b-0 hover:bg-bg-elevated active:bg-bg-elevated",
                       selectedEmployeeId === employee.id &&
                         "bg-emerald-500/10 text-emerald-100"
                     )}
-                    onPointerDown={(event) =>
-                      handleEmployeePointerDown(event, employee)
+                    onPointerDown={handleEmployeePointerDown}
+                    onPointerMove={handleEmployeePointerMove}
+                    onPointerUp={(event) =>
+                      handleEmployeePointerUp(event, employee)
                     }
-                    onClick={(event) => {
-                      // احتياطي للمتصفحات التي لا تُطلق pointerdown كما يُتوقع
-                      event.preventDefault();
-                      if (!selectingRef.current) {
-                        selectEmployee(employee);
-                      }
-                    }}
+                    onPointerCancel={handleEmployeePointerCancel}
+                    onClick={(event) => handleEmployeeClick(event, employee)}
                   >
                     <span className="min-w-0 truncate font-medium text-text-primary">
                       {employee.name}
