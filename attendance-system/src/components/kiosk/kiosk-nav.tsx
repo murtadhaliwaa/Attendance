@@ -10,6 +10,7 @@ import {
   MonitorSmartphone,
 } from "lucide-react";
 import { useKioskTabletMode } from "@/hooks/use-kiosk-tablet-mode";
+import { useVisualViewportHeight } from "@/hooks/use-visual-viewport-height";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/components/dashboard/role-context";
 import {
@@ -211,21 +212,39 @@ export function KioskShell({
     pathname === "/kiosk/checkin" || pathname === "/kiosk/checkout";
   const immersiveTablet = tabletMode && isScanner;
   const hideMobileNav = isScanner;
+  const { height: viewportHeight, offsetTop, keyboardOpen } =
+    useVisualViewportHeight(isScanner);
 
   return (
     <div
       className={cn(
         "flex bg-bg-page",
         isScanner
-          ? "h-dvh max-h-dvh overflow-hidden supports-[height:100svh]:h-svh supports-[height:100svh]:max-h-svh"
-          : "min-h-screen"
+          ? "supports-[height:100svh]:h-svh supports-[height:100svh]:max-h-svh"
+          : "min-h-screen",
+        isScanner && (keyboardOpen ? "overflow-y-auto" : "overflow-hidden"),
+        isScanner && !viewportHeight && "h-dvh max-h-dvh"
       )}
+      style={
+        isScanner && viewportHeight
+          ? {
+              height: viewportHeight,
+              maxHeight: viewportHeight,
+              transform: offsetTop ? `translateY(${offsetTop}px)` : undefined,
+            }
+          : undefined
+      }
+      data-keyboard-open={keyboardOpen ? "true" : "false"}
     >
       {!immersiveTablet && <KioskSidebar loggedIn={loggedIn} />}
       <div
         className={cn(
           "flex min-w-0 flex-1 flex-col",
-          isScanner ? "min-h-0 overflow-hidden" : "min-h-screen",
+          isScanner
+            ? keyboardOpen
+              ? "min-h-0 overflow-y-auto overscroll-contain"
+              : "min-h-0 overflow-hidden"
+            : "min-h-screen",
           !hideMobileNav && "pb-16 lg:pb-0"
         )}
       >

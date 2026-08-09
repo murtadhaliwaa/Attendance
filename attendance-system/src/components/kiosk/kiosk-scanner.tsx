@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   CheckCircle2,
   Camera,
@@ -16,11 +17,13 @@ import {
 } from "@/components/ui/card";
 import type { KioskMode } from "@/lib/kiosk-types";
 import { useKioskPhotoScanner } from "@/hooks/use-kiosk-photo-scanner";
+import { useVisualViewportHeight } from "@/hooks/use-visual-viewport-height";
 import { KioskResultPanel } from "@/components/kiosk/kiosk-result-panel";
 import { KioskScannerHeader } from "@/components/kiosk/kiosk-scanner-header";
 import { KioskCameraView } from "@/components/kiosk/kiosk-camera-view";
 import { KioskScannerControls } from "@/components/kiosk/kiosk-scanner-controls";
 import { CameraFacingSelector } from "@/components/kiosk/camera-facing-selector";
+import { cn } from "@/lib/utils";
 
 interface KioskScannerProps {
   mode: KioskMode;
@@ -28,6 +31,10 @@ interface KioskScannerProps {
 
 export function KioskScanner({ mode }: KioskScannerProps) {
   const scanner = useKioskPhotoScanner(mode);
+  const { keyboardOpen } = useVisualViewportHeight(true);
+  const [formFocused, setFormFocused] = useState(false);
+  const compactForKeyboard = keyboardOpen || formFocused;
+
   const {
     isCheckin,
     labels,
@@ -76,7 +83,14 @@ export function KioskScanner({ mode }: KioskScannerProps) {
         : labels.action;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden px-2 pt-[max(0.25rem,env(safe-area-inset-top))] pb-[max(0.35rem,env(safe-area-inset-bottom))] sm:px-3 sm:py-2">
+    <div
+      className={cn(
+        "flex h-full min-h-0 flex-col px-2 pt-[max(0.25rem,env(safe-area-inset-top))] pb-[max(0.35rem,env(safe-area-inset-bottom))] sm:px-3 sm:py-2",
+        compactForKeyboard
+          ? "overflow-y-auto overscroll-contain"
+          : "overflow-hidden"
+      )}
+    >
       <KioskScannerHeader
         isCheckin={isCheckin}
         labels={labels}
@@ -87,7 +101,13 @@ export function KioskScanner({ mode }: KioskScannerProps) {
 
       <Card
         size="sm"
-        className={`mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-0 overflow-hidden py-1 sm:gap-1 sm:py-2 ${accentBorder}`}
+        className={cn(
+          "mx-auto flex w-full max-w-4xl flex-col gap-0 py-1 sm:gap-1 sm:py-2",
+          accentBorder,
+          compactForKeyboard
+            ? "min-h-0 flex-none"
+            : "min-h-0 flex-1 overflow-hidden"
+        )}
       >
         <CardHeader className="hidden shrink-0 gap-0 px-2 py-0 sm:gap-0.5 sm:px-3 [@media(min-height:701px)]:flex">
           <CardTitle className="flex items-center justify-center gap-1.5 text-sm font-semibold sm:gap-2 sm:text-lg">
@@ -116,9 +136,26 @@ export function KioskScanner({ mode }: KioskScannerProps) {
           {statusText || cardTitle}
         </p>
 
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden px-2 pb-1.5 sm:gap-1.5 sm:px-3 sm:pb-2">
-          <div className="flex min-h-0 flex-1 flex-col gap-1 sm:gap-2 lg:flex-row lg:items-stretch lg:overflow-hidden">
-            <div className="flex shrink-0 flex-col gap-1 lg:min-h-0 lg:min-w-0 lg:flex-1 lg:shrink">
+        <CardContent
+          className={cn(
+            "flex flex-col gap-1 px-2 pb-1.5 sm:gap-1.5 sm:px-3 sm:pb-2",
+            compactForKeyboard ? "flex-none" : "min-h-0 flex-1 overflow-hidden"
+          )}
+        >
+          <div
+            className={cn(
+              "flex flex-col gap-1 sm:gap-2 lg:flex-row lg:items-stretch",
+              compactForKeyboard
+                ? "flex-none"
+                : "min-h-0 flex-1 lg:overflow-hidden"
+            )}
+          >
+            <div
+              className={cn(
+                "flex flex-col gap-1 lg:min-h-0 lg:min-w-0 lg:flex-1 lg:shrink",
+                compactForKeyboard ? "hidden lg:flex" : "shrink-0"
+              )}
+            >
               <KioskCameraView
                 videoRef={videoRef}
                 state={state}
@@ -140,7 +177,14 @@ export function KioskScanner({ mode }: KioskScannerProps) {
               </div>
             )}
 
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:max-w-md lg:shrink-0">
+            <div
+              className={cn(
+                "flex min-w-0 flex-col lg:max-w-md lg:shrink-0",
+                compactForKeyboard
+                  ? "min-h-[50svh] flex-none"
+                  : "min-h-0 flex-1 overflow-hidden"
+              )}
+            >
               <KioskScannerControls
                 accentActionClass={accentActionClass}
                 roster={roster}
@@ -152,6 +196,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 onShiftChange={setSelectedShiftId}
                 onCaptureAndSubmit={handleCaptureAndSubmit}
                 submitting={state === "processing"}
+                onFormFocusChange={setFormFocused}
               />
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FocusEvent } from "react";
 import { Camera, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ interface KioskScannerControlsProps {
   onShiftChange: (value: string) => void;
   onCaptureAndSubmit: () => void;
   submitting: boolean;
+  onFormFocusChange?: (focused: boolean) => void;
 }
 
 export function KioskScannerControls({
@@ -42,8 +43,37 @@ export function KioskScannerControls({
   onShiftChange,
   onCaptureAndSubmit,
   submitting,
+  onFormFocusChange,
 }: KioskScannerControlsProps) {
   const [employeeSearch, setEmployeeSearch] = useState("");
+
+  function scrollFieldIntoView(target: HTMLElement) {
+    // انتظر فتح الكيبورد ثم حرّك الحقل ليظهر فوقه
+    window.setTimeout(() => {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+    }, 150);
+    window.setTimeout(() => {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+    }, 350);
+  }
+
+  function handleSearchFocus(event: FocusEvent<HTMLInputElement>) {
+    onFormFocusChange?.(true);
+    scrollFieldIntoView(event.currentTarget);
+  }
+
+  function handleSearchBlur() {
+    // تأخير قصير حتى لا تختفي الكاميرا أثناء الضغط على عنصر آخر في النموذج
+    window.setTimeout(() => onFormFocusChange?.(false), 180);
+  }
 
   const shiftEmployees = useMemo(() => {
     if (!selectedShiftId) return [];
@@ -127,6 +157,8 @@ export function KioskScannerControls({
               }
               value={employeeSearch}
               onChange={(event) => setEmployeeSearch(event.target.value)}
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
               disabled={!selectedShiftId}
               className="h-10 rounded-lg border-bg-border bg-bg-card/80 pr-9 text-xs sm:h-10 sm:rounded-xl sm:pr-10 sm:text-sm [@media(max-height:700px)]:h-9"
             />
