@@ -216,20 +216,22 @@ export function KioskShell({
     <div
       className={cn(
         "flex bg-bg-page",
-        isScanner ? "h-dvh overflow-hidden" : "min-h-screen"
+        isScanner
+          ? "h-dvh max-h-dvh overflow-hidden supports-[height:100svh]:h-svh supports-[height:100svh]:max-h-svh"
+          : "min-h-screen"
       )}
     >
       {!immersiveTablet && <KioskSidebar loggedIn={loggedIn} />}
       <div
         className={cn(
-          "flex flex-1 flex-col",
+          "flex min-w-0 flex-1 flex-col",
           isScanner ? "min-h-0 overflow-hidden" : "min-h-screen",
           !hideMobileNav && "pb-16 lg:pb-0"
         )}
       >
         <main
           className={cn(
-            "flex flex-col",
+            "flex min-w-0 flex-col",
             isScanner ? "h-full min-h-0" : "flex-1"
           )}
         >

@@ -26,10 +26,10 @@ export function KioskScannerHeader({
   const { enabled: tabletMode } = useKioskTabletMode();
 
   return (
-    <div className="mx-auto mb-1 w-full max-w-4xl shrink-0 sm:mb-2">
+    <div className="mx-auto mb-0.5 w-full max-w-4xl shrink-0 sm:mb-2 [@media(max-height:700px)]:mb-0">
       <div
         dir="ltr"
-        className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1.5 py-0.5 sm:gap-3 sm:py-1"
+        className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 py-0.5 sm:gap-3 sm:py-1"
       >
         <div className="flex justify-start">
           {tabletMode ? (
@@ -39,7 +39,8 @@ export function KioskScannerHeader({
               href="/kiosk"
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "h-8 shrink-0 px-3 text-sm hover:no-underline",
+                "h-8 shrink-0 px-2.5 text-xs hover:no-underline sm:px-3 sm:text-sm",
+                "[@media(max-height:700px)]:h-7 [@media(max-height:700px)]:px-2",
                 accentActionClass
               )}
             >
@@ -52,7 +53,8 @@ export function KioskScannerHeader({
           <p
             dir="ltr"
             className={cn(
-              "truncate rounded-lg border px-3 py-1 text-center font-mono text-base font-bold tracking-wide tabular-nums shadow-sm sm:rounded-xl sm:px-5 sm:py-2 sm:text-xl",
+              "truncate rounded-lg border px-2.5 py-1 text-center font-mono text-sm font-bold tracking-wide tabular-nums shadow-sm sm:rounded-xl sm:px-5 sm:py-2 sm:text-xl",
+              "[@media(max-height:700px)]:px-2 [@media(max-height:700px)]:py-0.5 [@media(max-height:700px)]:text-sm",
               accentClockClass
             )}
           >
@@ -61,18 +63,18 @@ export function KioskScannerHeader({
         </div>
 
         <div className="flex w-full min-w-0 justify-end">
-          <div dir="rtl" className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+          <div dir="rtl" className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
             <div
-              className={`flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10 ${isCheckin ? "bg-emerald-500/15" : "bg-sky-500/15"}`}
+              className={`flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-10 [@media(max-height:700px)]:size-7 ${isCheckin ? "bg-emerald-500/15" : "bg-sky-500/15"}`}
             >
               {isCheckin ? (
-                <LogIn className="size-4 text-emerald-300 sm:size-5" />
+                <LogIn className="size-3.5 text-emerald-300 sm:size-5" />
               ) : (
-                <LogOut className="size-4 text-sky-300 sm:size-5" />
+                <LogOut className="size-3.5 text-sky-300 sm:size-5" />
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold text-text-primary sm:text-lg">
+              <h1 className="truncate text-xs font-bold text-text-primary sm:text-lg [@media(max-height:700px)]:text-[11px]">
                 {labels.title}
               </h1>
               <p className="hidden truncate text-xs text-text-secondary sm:block sm:text-sm">

@@ -87,8 +87,8 @@ export function KioskScannerControls({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden sm:gap-1.5">
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5 rounded-xl border border-bg-border bg-bg-elevated/80 p-2 sm:gap-3 sm:p-3">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-bg-border bg-bg-elevated/80">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-2 sm:space-y-3 sm:p-3 [@media(max-height:700px)]:space-y-1.5 [@media(max-height:700px)]:p-1.5">
         <div className="space-y-1">
           <p className="text-[11px] font-medium text-text-primary sm:text-xs">
             ١. اختر الشفت
@@ -98,7 +98,7 @@ export function KioskScannerControls({
             onValueChange={handleShiftChange}
             disabled={shifts.length === 0}
           >
-            <SelectTrigger className="h-9 w-full rounded-lg text-xs sm:h-11 sm:rounded-xl sm:text-sm">
+            <SelectTrigger className="h-10 w-full rounded-lg text-xs sm:h-11 sm:rounded-xl sm:text-sm [@media(max-height:700px)]:h-9">
               <SelectValue placeholder="اختر الشفت">
                 {selectedShiftLabel}
               </SelectValue>
@@ -128,7 +128,7 @@ export function KioskScannerControls({
               value={employeeSearch}
               onChange={(event) => setEmployeeSearch(event.target.value)}
               disabled={!selectedShiftId}
-              className="h-9 rounded-lg border-bg-border bg-bg-card/80 pr-9 text-xs sm:h-10 sm:rounded-xl sm:pr-10 sm:text-sm"
+              className="h-10 rounded-lg border-bg-border bg-bg-card/80 pr-9 text-xs sm:h-10 sm:rounded-xl sm:pr-10 sm:text-sm [@media(max-height:700px)]:h-9"
             />
           </div>
           <Select
@@ -136,7 +136,7 @@ export function KioskScannerControls({
             onValueChange={(value) => onEmployeeChange(value ?? "")}
             disabled={rosterLoading || !selectedShiftId}
           >
-            <SelectTrigger className="h-9 w-full rounded-lg text-xs sm:h-11 sm:rounded-xl sm:text-sm">
+            <SelectTrigger className="h-10 w-full rounded-lg text-xs sm:h-11 sm:rounded-xl sm:text-sm [@media(max-height:700px)]:h-9">
               <SelectValue
                 placeholder={
                   !selectedShiftId
@@ -181,25 +181,24 @@ export function KioskScannerControls({
             </div>
           )}
         </div>
+      </div>
 
-        <div className="shrink-0 space-y-1 pt-0.5">
-          <p className="text-[11px] font-medium text-text-primary sm:text-xs">
-            ٣. التقط وأرسل
-          </p>
-          <Button
-            className={cn(
-              "h-11 w-full rounded-lg text-sm sm:h-12 sm:rounded-xl sm:text-base",
-              accentActionClass
-            )}
-            onClick={onCaptureAndSubmit}
-            disabled={
-              submitting || !selectedShiftId || !selectedEmployeeId
-            }
-          >
-            <Camera className="size-4 sm:size-5" />
-            التقاط وإرسال للمراجعة
-          </Button>
-        </div>
+      <div className="shrink-0 border-t border-bg-border bg-bg-elevated/95 p-2 sm:p-3 [@media(max-height:700px)]:p-1.5">
+        <p className="mb-1 text-[11px] font-medium text-text-primary sm:text-xs">
+          ٣. التقط وأرسل
+        </p>
+        <Button
+          className={cn(
+            "h-11 w-full rounded-lg text-sm sm:h-12 sm:rounded-xl sm:text-base",
+            "[@media(max-height:700px)]:h-10 [@media(max-height:700px)]:text-sm",
+            accentActionClass
+          )}
+          onClick={onCaptureAndSubmit}
+          disabled={submitting || !selectedShiftId || !selectedEmployeeId}
+        >
+          <Camera className="size-4 sm:size-5" />
+          التقاط وإرسال للمراجعة
+        </Button>
       </div>
     </div>
   );

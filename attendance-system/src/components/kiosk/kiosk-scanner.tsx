@@ -76,7 +76,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
         : labels.action;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden px-2 py-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] sm:px-3 sm:py-2">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden px-2 pt-[max(0.25rem,env(safe-area-inset-top))] pb-[max(0.35rem,env(safe-area-inset-bottom))] sm:px-3 sm:py-2">
       <KioskScannerHeader
         isCheckin={isCheckin}
         labels={labels}
@@ -87,9 +87,9 @@ export function KioskScanner({ mode }: KioskScannerProps) {
 
       <Card
         size="sm"
-        className={`mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-0 py-1 sm:gap-1 sm:py-2 ${accentBorder}`}
+        className={`mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-0 overflow-hidden py-1 sm:gap-1 sm:py-2 ${accentBorder}`}
       >
-        <CardHeader className="shrink-0 gap-0 px-2 py-0 sm:gap-0.5 sm:px-3">
+        <CardHeader className="hidden shrink-0 gap-0 px-2 py-0 sm:gap-0.5 sm:px-3 [@media(min-height:701px)]:flex">
           <CardTitle className="flex items-center justify-center gap-1.5 text-sm font-semibold sm:gap-2 sm:text-lg">
             {state === "loading" && <Loader2 className="size-5 animate-spin" />}
             {state === "scanning" && <Camera className="size-5 text-blue-primary" />}
@@ -112,8 +112,12 @@ export function KioskScanner({ mode }: KioskScannerProps) {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 pb-1.5 sm:gap-1.5 sm:px-3 sm:pb-2 lg:overflow-hidden">
-          <div className="flex min-h-0 flex-1 flex-col gap-1 sm:gap-2 lg:flex-row lg:items-stretch">
+        <p className="shrink-0 px-2 pb-1 text-center text-[11px] font-medium text-text-primary [@media(min-height:701px)]:hidden">
+          {statusText || cardTitle}
+        </p>
+
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden px-2 pb-1.5 sm:gap-1.5 sm:px-3 sm:pb-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-1 sm:gap-2 lg:flex-row lg:items-stretch lg:overflow-hidden">
             <div className="flex shrink-0 flex-col gap-1 lg:min-h-0 lg:min-w-0 lg:flex-1 lg:shrink">
               <KioskCameraView
                 videoRef={videoRef}
@@ -124,10 +128,19 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 previewUrl={previewUrl}
                 onRetryCamera={retryCamera}
               />
-              <CameraFacingSelector compact className="shrink-0 lg:mx-auto lg:max-w-xs" />
+              <CameraFacingSelector
+                compact
+                className="shrink-0 lg:mx-auto lg:max-w-xs [@media(max-height:600px)]:hidden"
+              />
             </div>
 
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:max-w-md lg:shrink-0 lg:overflow-y-auto">
+            {state === "success" && result && (
+              <div className="order-first shrink-0 lg:order-last lg:self-stretch">
+                <KioskResultPanel result={result} isCheckin={isCheckin} />
+              </div>
+            )}
+
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:max-w-md lg:shrink-0">
               <KioskScannerControls
                 accentActionClass={accentActionClass}
                 roster={roster}
@@ -141,10 +154,6 @@ export function KioskScanner({ mode }: KioskScannerProps) {
                 submitting={state === "processing"}
               />
             </div>
-
-            {state === "success" && result && (
-              <KioskResultPanel result={result} isCheckin={isCheckin} />
-            )}
           </div>
         </CardContent>
       </Card>
