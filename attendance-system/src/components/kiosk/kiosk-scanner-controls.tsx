@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FocusEvent } from "react";
-import { Camera, Search } from "lucide-react";
+import { Camera, Check, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,6 +46,7 @@ export function KioskScannerControls({
   onFormFocusChange,
 }: KioskScannerControlsProps) {
   const [employeeSearch, setEmployeeSearch] = useState("");
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   function scrollFieldIntoView(target: HTMLElement) {
     // انتظر فتح الكيبورد ثم حرّك الحقل ليظهر فوقه
@@ -66,13 +67,17 @@ export function KioskScannerControls({
   }
 
   function handleSearchFocus(event: FocusEvent<HTMLInputElement>) {
+    setSuggestionsOpen(true);
     onFormFocusChange?.(true);
     scrollFieldIntoView(event.currentTarget);
   }
 
   function handleSearchBlur() {
-    // تأخير قصير حتى لا تختفي الكاميرا أثناء الضغط على عنصر آخر في النموذج
-    window.setTimeout(() => onFormFocusChange?.(false), 180);
+    // تأخير قصير حتى يمكن الضغط على اقتراح قبل إغلاق القائمة
+    window.setTimeout(() => {
+      setSuggestionsOpen(false);
+      onFormFocusChange?.(false);
+    }, 180);
   }
 
   const shiftEmployees = useMemo(() => {
@@ -97,10 +102,10 @@ export function KioskScannerControls({
     );
   }, [employeeSearch, shiftEmployees]);
 
-  const selectedEmployeeLabel = useMemo(
+  const selectedEmployee = useMemo(
     () =>
-      shiftEmployees.find((employee) => employee.id === selectedEmployeeId)
-        ?.name,
+      shiftEmployees.find((employee) => employee.id === selectedEmployeeId) ??
+      null,
     [shiftEmployees, selectedEmployeeId]
   );
 
@@ -114,7 +119,36 @@ export function KioskScannerControls({
     onShiftChange(value ?? "");
     onEmployeeChange("");
     setEmployeeSearch("");
+    setSuggestionsOpen(false);
   }
+
+  function handleSearchChange(value: string) {
+    setEmployeeSearch(value);
+    setSuggestionsOpen(true);
+
+    if (
+      selectedEmployeeId &&
+      shiftEmployees.find((employee) => employee.id === selectedEmployeeId)
+        ?.name !== value
+    ) {
+      onEmployeeChange("");
+    }
+  }
+
+  function selectEmployee(employee: RosterEmployee) {
+    onEmployeeChange(employee.id);
+    setEmployeeSearch(employee.name);
+    setSuggestionsOpen(false);
+  }
+
+  function clearSelection() {
+    onEmployeeChange("");
+    setEmployeeSearch("");
+    setSuggestionsOpen(true);
+  }
+
+  const showSuggestions =
+    suggestionsOpen && !!selectedShiftId && !rosterLoading;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-bg-border bg-bg-elevated/80">
@@ -149,10 +183,12 @@ export function KioskScannerControls({
             ٢. اختر اسمك
           </p>
           <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-text-muted sm:right-3 sm:size-4" />
+            <Search className="pointer-events-none absolute top-1/2 right-2.5 z-10 size-3.5 -translate-y-1/2 text-text-muted sm:right-3 sm:size-4" />
             <Input
-              aria-label="تصفية قائمة الموظفين"
-              type="search"
+              aria-label="ابحث عن اسمك"
+              aria-autocomplete="list"
+              aria-expanded={showSuggestions}
+              type="text"
               name="kiosk-employee-filter"
               autoComplete="off"
               autoCorrect="off"
@@ -164,57 +200,90 @@ export function KioskScannerControls({
               data-lpignore="true"
               data-form-type="other"
               placeholder={
-                selectedShiftId ? "ابحث..." : "اختر الشفت أولاً"
+                !selectedShiftId
+                  ? "اختر الشفت أولاً"
+                  : rosterLoading
+                    ? "جاري تحميل الموظفين..."
+                    : "اكتب اسمك..."
               }
               value={employeeSearch}
-              onChange={(event) => setEmployeeSearch(event.target.value)}
+              onChange={(event) => handleSearchChange(event.target.value)}
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
-              disabled={!selectedShiftId}
-              className="h-10 rounded-lg border-bg-border bg-bg-card/80 pr-9 text-xs sm:h-10 sm:rounded-xl sm:pr-10 sm:text-sm [@media(max-height:700px)]:h-9"
+              disabled={!selectedShiftId || rosterLoading}
+              className="h-10 rounded-lg border-bg-border bg-bg-card/80 pr-9 pl-9 text-xs sm:h-10 sm:rounded-xl sm:pr-10 sm:pl-10 sm:text-sm [@media(max-height:700px)]:h-9"
             />
-          </div>
-          <Select
-            value={selectedEmployeeId}
-            onValueChange={(value) => onEmployeeChange(value ?? "")}
-            disabled={rosterLoading || !selectedShiftId}
-          >
-            <SelectTrigger className="h-10 w-full rounded-lg text-xs sm:h-11 sm:rounded-xl sm:text-sm [@media(max-height:700px)]:h-9">
-              <SelectValue
-                placeholder={
-                  !selectedShiftId
-                    ? "اختر الشفت أولاً"
-                    : rosterLoading
-                      ? "جاري تحميل الموظفين..."
-                      : "اختر اسمك"
-                }
+            {(employeeSearch || selectedEmployeeId) && (
+              <button
+                type="button"
+                aria-label="مسح الاسم"
+                className="absolute top-1/2 left-2.5 z-10 -translate-y-1/2 rounded-md p-0.5 text-text-muted hover:text-text-primary"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={clearSelection}
               >
-                {selectedEmployeeLabel}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {!selectedShiftId ? (
-                <p className="px-2 py-3 text-center text-sm text-text-muted">
-                  اختر الشفت أولاً
-                </p>
-              ) : filteredRoster.length === 0 ? (
-                <p className="px-2 py-3 text-center text-sm text-text-muted">
+                <X className="size-3.5 sm:size-4" />
+              </button>
+            )}
+          </div>
+
+          {selectedEmployee && (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-100 sm:text-sm">
+              <Check className="size-4 shrink-0" />
+              <span className="min-w-0 truncate font-medium">
+                {selectedEmployee.name}
+              </span>
+              <span className="shrink-0 text-[10px] text-emerald-200/80 sm:text-xs">
+                {selectedEmployee.department}
+              </span>
+            </div>
+          )}
+
+          {showSuggestions && (
+            <div
+              role="listbox"
+              aria-label="اقتراحات الأسماء"
+              className="max-h-44 overflow-y-auto overscroll-contain rounded-lg border border-bg-border bg-bg-card shadow-lg sm:max-h-56"
+            >
+              {filteredRoster.length === 0 ? (
+                <p className="px-3 py-3 text-center text-xs text-text-muted sm:text-sm">
                   {employeeSearch.trim()
                     ? "لا توجد نتائج للبحث"
                     : "لا يوجد موظف لهذا الشفت"}
                 </p>
               ) : (
                 filteredRoster.map((employee) => (
-                  <SelectItem key={employee.id} value={employee.id}>
-                    {employee.name} — {employee.department}
-                  </SelectItem>
+                  <button
+                    key={employee.id}
+                    type="button"
+                    role="option"
+                    aria-selected={selectedEmployeeId === employee.id}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-2 border-b border-bg-border/60 px-3 py-2.5 text-right text-xs last:border-b-0 hover:bg-bg-elevated active:bg-bg-elevated sm:text-sm",
+                      selectedEmployeeId === employee.id &&
+                        "bg-emerald-500/10 text-emerald-100"
+                    )}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => selectEmployee(employee)}
+                  >
+                    <span className="min-w-0 truncate font-medium text-text-primary">
+                      {employee.name}
+                    </span>
+                    <span className="shrink-0 text-[10px] text-text-muted sm:text-xs">
+                      {employee.department}
+                    </span>
+                  </button>
                 ))
               )}
-            </SelectContent>
-          </Select>
+            </div>
+          )}
+
           {selectedShiftId && !rosterLoading && (
             <div className="space-y-0.5 text-[10px] text-text-muted sm:text-[11px]">
-              <p>{shiftEmployees.length} موظف في هذا الشفت</p>
+              <p>
+                {employeeSearch.trim() && !selectedEmployeeId
+                  ? `${filteredRoster.length} نتيجة من ${shiftEmployees.length}`
+                  : `${shiftEmployees.length} موظف في هذا الشفت`}
+              </p>
               {unassignedCount > 0 && (
                 <p className="text-amber-200/90">
                   {unassignedCount} بلا شفت معيّن — عيّن الشفت من إدارة
