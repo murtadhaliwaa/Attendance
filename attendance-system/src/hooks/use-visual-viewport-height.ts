@@ -17,25 +17,34 @@ export function useVisualViewportHeight(enabled: boolean) {
     const vv = window.visualViewport;
     if (!vv) return;
 
-    const update = () => {
+    let frame = 0;
+
+    const apply = () => {
+      frame = 0;
       const next = Math.round(vv.height);
       const top = Math.round(vv.offsetTop);
       setHeight(next);
       setOffsetTop(top);
-      // فرق واضح يعني أن الكيبورد (أو شريط المتصفح) قلّص المنطقة المرئية
       const inset = Math.max(0, window.innerHeight - next - top);
       setKeyboardOpen(inset > 120);
     };
 
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    window.addEventListener("orientationchange", update);
+    // تجميع أحداث resize/scroll في إطار رسم واحد يقلّل اهتزاز التخطيط
+    const schedule = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(apply);
+    };
+
+    apply();
+    vv.addEventListener("resize", schedule);
+    vv.addEventListener("scroll", schedule);
+    window.addEventListener("orientationchange", schedule);
 
     return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-      window.removeEventListener("orientationchange", update);
+      if (frame) window.cancelAnimationFrame(frame);
+      vv.removeEventListener("resize", schedule);
+      vv.removeEventListener("scroll", schedule);
+      window.removeEventListener("orientationchange", schedule);
     };
   }, [enabled]);
 

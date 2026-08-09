@@ -16,7 +16,11 @@ export async function GET(request: Request) {
         endTime: true,
       },
     });
-    return NextResponse.json(shifts);
+    return NextResponse.json(shifts, {
+      headers: {
+        "Cache-Control": "private, max-age=60, stale-while-revalidate=120",
+      },
+    });
   } catch {
     return NextResponse.json(
       { error: "فشل تحميل الشفتات" },

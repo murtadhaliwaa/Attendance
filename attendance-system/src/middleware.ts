@@ -37,14 +37,27 @@ async function ensureKioskSession(
   return response;
 }
 
+function shouldSkipSupabaseAuth(pathname: string) {
+  // صفحات الكشك + واجهاتها العامة فقط — باقي /api/employees يحتاج تجديد جلسة المستخدم
+  return (
+    pathname.startsWith("/kiosk") ||
+    pathname === "/api/employees/roster" ||
+    pathname === "/api/schedules/kiosk"
+  );
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
 
   const isProtectedRoute =
-    request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname.startsWith("/admin");
+    pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
 
-  const isLogin = request.nextUrl.pathname.startsWith("/login");
+  const isLogin = pathname.startsWith("/login");
+
+  if (shouldSkipSupabaseAuth(pathname)) {
+    return ensureKioskSession(request, supabaseResponse);
+  }
 
   if (!isSupabaseConfigured()) {
     if (process.env.NODE_ENV === "production" && isProtectedRoute) {

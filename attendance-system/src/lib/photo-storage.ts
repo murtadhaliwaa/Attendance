@@ -12,6 +12,11 @@ export const PHOTO_BUCKET = "attendance-photos";
 
 const SIGNED_URL_TTL_SEC = 60 * 60;
 
+const globalForS3 = globalThis as unknown as {
+  client?: S3Client;
+  cacheKey?: string;
+};
+
 function projectRefFromUrl(url: string): string {
   const match = url.match(/https:\/\/([^.]+)\.supabase\.co/);
   if (!match) {
@@ -67,13 +72,25 @@ function getS3Client(projectRef: string): S3Client {
   }
 
   const region = process.env.SUPABASE_S3_REGION?.trim() || "eu-central-1";
+  const cacheKey = `${projectRef}:${region}:${accessKeyId}`;
 
-  return new S3Client({
+  // إعادة استخدام العميل عبر الطلبات يقلّل تأخير الإنشاء على serverless
+  if (
+    globalForS3.client &&
+    globalForS3.cacheKey === cacheKey
+  ) {
+    return globalForS3.client;
+  }
+
+  const client = new S3Client({
     forcePathStyle: true,
     region,
     endpoint: `https://${projectRef}.storage.supabase.co/storage/v1/s3`,
     credentials: { accessKeyId, secretAccessKey },
   });
+  globalForS3.client = client;
+  globalForS3.cacheKey = cacheKey;
+  return client;
 }
 
 function getStorageAdmin() {
@@ -139,13 +156,43 @@ export function parseDataUrlImage(dataUrl: string): {
   }
   const contentType = match[1]!.toLowerCase();
   const buffer = Buffer.from(match[2]!, "base64");
+  validateImageBuffer(buffer);
+  return { buffer, contentType };
+}
+
+export function parseBinaryImage(
+  buffer: Buffer,
+  contentType: string
+): { buffer: Buffer; contentType: string } {
+  const normalized = (contentType || "image/jpeg").toLowerCase();
+  if (!normalized.startsWith("image/")) {
+    throw new Error("صيغة الصورة غير صالحة");
+  }
+  validateImageBuffer(buffer);
+  return { buffer, contentType: normalized };
+}
+
+function validateImageBuffer(buffer: Buffer) {
   if (buffer.length < 1024) {
     throw new Error("الصورة صغيرة جداً — أعد الالتقاط");
   }
   if (buffer.length > 5 * 1024 * 1024) {
     throw new Error("حجم الصورة كبير جداً (الحد 5 ميجابايت)");
   }
-  return { buffer, contentType };
+}
+
+export type PhotoUploadSource =
+  | string
+  | { buffer: Buffer; contentType: string };
+
+function resolvePhotoSource(source: PhotoUploadSource): {
+  buffer: Buffer;
+  contentType: string;
+} {
+  if (typeof source === "string") {
+    return parseDataUrlImage(source);
+  }
+  return parseBinaryImage(source.buffer, source.contentType);
 }
 
 function extensionFor(contentType: string): string {
@@ -200,10 +247,10 @@ async function uploadViaSupabaseRest(
 export async function uploadEmployeePhoto(
   employeeId: string,
   category: "reference" | "checkin" | "checkout",
-  dataUrl: string,
+  source: PhotoUploadSource,
   dateKey?: string
 ): Promise<string> {
-  const { buffer, contentType } = parseDataUrlImage(dataUrl);
+  const { buffer, contentType } = resolvePhotoSource(source);
   const ext = extensionFor(contentType);
   const stamp = Date.now();
   const path =

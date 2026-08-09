@@ -18,20 +18,30 @@ export async function GET(request: Request) {
 
   const today = getTodayDate();
 
-  const employee = await prisma.employee.findUnique({
-    where: { id: employeeId, isActive: true },
-    select: { name: true },
-  });
+  const [employee, attendance] = await Promise.all([
+    prisma.employee.findUnique({
+      where: { id: employeeId, isActive: true },
+      select: { name: true },
+    }),
+    prisma.attendance.findUnique({
+      where: {
+        employeeId_date: { employeeId, date: today },
+      },
+      select: {
+        checkIn: true,
+        checkOut: true,
+        status: true,
+        checkInVerificationStatus: true,
+        checkOutVerificationStatus: true,
+        checkInPhotoAttempts: true,
+        checkOutPhotoAttempts: true,
+      },
+    }),
+  ]);
 
   if (!employee) {
     return NextResponse.json({ error: "الموظف غير موجود" }, { status: 404 });
   }
-
-  const attendance = await prisma.attendance.findUnique({
-    where: {
-      employeeId_date: { employeeId, date: today },
-    },
-  });
 
   const hasCheckIn = !!attendance?.checkIn;
   const hasCheckOut = !!attendance?.checkOut;
@@ -50,7 +60,6 @@ export async function GET(request: Request) {
   if (hasCheckOut && attendance?.checkOutVerificationStatus !== "REJECTED") {
     nextAction = checkOutRetryable ? "checkout" : "done";
   } else if (!hasCheckIn || attendance?.checkInVerificationStatus === "REJECTED") {
-    // يمكن الحضور أو الانصراف مباشرة
     nextAction = "checkin";
   } else if (checkInRetryable) {
     nextAction = "checkin";

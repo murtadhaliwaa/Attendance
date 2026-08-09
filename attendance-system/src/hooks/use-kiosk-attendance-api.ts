@@ -67,12 +67,18 @@ export function useKioskAttendanceApi(mode: KioskMode) {
   }, []);
 
   const submitPhotoAttendance = useCallback(
-    async (employeeId: string, shiftId: string, imageDataUrl: string) => {
+    async (employeeId: string, shiftId: string, photo: Blob) => {
+      const form = new FormData();
+      form.set("employeeId", employeeId);
+      form.set("shiftId", shiftId);
+      form.set("mode", mode);
+      form.set("photo", photo, "capture.jpg");
+
       const { res, data } = await kioskJson<
         AttendanceResult & { error?: string; pending?: boolean }
       >("/api/attendance/photo", {
         method: "POST",
-        body: JSON.stringify({ employeeId, shiftId, imageDataUrl, mode }),
+        body: form,
       });
 
       if (!res.ok) throw new Error(data.error ?? "فشل التسجيل");

@@ -10,6 +10,7 @@ import { employeeShiftSelect } from "@/lib/employee-shift";
 import {
   deleteEmployeePhoto,
   uploadEmployeePhoto,
+  type PhotoUploadSource,
 } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 import { MAX_PHOTO_SUBMIT_ATTEMPTS } from "@/lib/photo-attendance-limits";
@@ -42,7 +43,14 @@ function toPhotoAttendanceError(error: unknown): never {
 async function getEmployeeForPhoto(employeeId: string, shiftId: string) {
   const employee = await prisma.employee.findUnique({
     where: { id: employeeId, isActive: true },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      department: true,
+      shiftId: true,
+      hasReferencePhoto: true,
+      referencePhotoUrl: true,
+      customEndTime: true,
       shift: { select: employeeShiftSelect },
     },
   });
@@ -56,15 +64,6 @@ async function getEmployeeForPhoto(employeeId: string, shiftId: string) {
       "لم تُسجَّل صورة مرجعية لهذا الموظف — راجع مسؤول الاستعلامات",
       400
     );
-  }
-
-  const shift = await prisma.workSchedule.findUnique({
-    where: { id: shiftId },
-    select: employeeShiftSelect,
-  });
-
-  if (!shift) {
-    throw new PhotoAttendanceError("الشفت المختار غير موجود", 400);
   }
 
   if (!employee.shiftId) {
@@ -81,7 +80,27 @@ async function getEmployeeForPhoto(employeeId: string, shiftId: string) {
     );
   }
 
+  // الشفت محمّل مع الموظف — لا حاجة لاستعلام ثانٍ في المسار السليم
+  const shift =
+    employee.shift ??
+    (await prisma.workSchedule.findUnique({
+      where: { id: shiftId },
+      select: employeeShiftSelect,
+    }));
+
+  if (!shift) {
+    throw new PhotoAttendanceError("الشفت المختار غير موجود", 400);
+  }
+
   return { employee, shift };
+}
+
+/** حذف في الخلفية بعد الرد — لا يمنع ظهور النجاح للمستخدم */
+function schedulePreviousPhotoDelete(
+  previousPath: string | null | undefined,
+  nextPath: string
+) {
+  void deletePreviousPhotoSafe(previousPath, nextPath);
 }
 
 /** حذف آمن بعد نجاح الحفظ فقط — لا يُستدعى قبل كتابة قاعدة البيانات */
@@ -108,7 +127,7 @@ async function deleteUploadedPhotoSafe(path: string) {
 export async function submitPhotoCheckIn(input: {
   employeeId: string;
   shiftId: string;
-  imageDataUrl: string;
+  image: PhotoUploadSource;
 }) {
   const { employee, shift } = await getEmployeeForPhoto(
     input.employeeId,
@@ -144,7 +163,7 @@ export async function submitPhotoCheckIn(input: {
   const photoPath = await uploadEmployeePhoto(
     employee.id,
     "checkin",
-    input.imageDataUrl,
+    input.image,
     dateKey
   );
 
@@ -262,7 +281,7 @@ export async function submitPhotoCheckIn(input: {
     throw error;
   }
 
-  await deletePreviousPhotoSafe(previousPhotoUrl, photoPath);
+  schedulePreviousPhotoDelete(previousPhotoUrl, photoPath);
 
   return {
     message: `${employee.name}: ${attemptsMessage("الحضور", nextAttempts)}`,
@@ -280,7 +299,7 @@ export async function submitPhotoCheckIn(input: {
 export async function submitPhotoCheckOut(input: {
   employeeId: string;
   shiftId: string;
-  imageDataUrl: string;
+  image: PhotoUploadSource;
 }) {
   const { employee } = await getEmployeeForPhoto(
     input.employeeId,
@@ -310,7 +329,7 @@ export async function submitPhotoCheckOut(input: {
   const photoPath = await uploadEmployeePhoto(
     employee.id,
     "checkout",
-    input.imageDataUrl,
+    input.image,
     dateKey
   );
 
@@ -448,7 +467,7 @@ export async function submitPhotoCheckOut(input: {
     throw error;
   }
 
-  await deletePreviousPhotoSafe(previousPhotoUrl, photoPath);
+  schedulePreviousPhotoDelete(previousPhotoUrl, photoPath);
 
   return {
     message: `${employee.name}: ${attemptsMessage("الانصراف", nextAttempts)}`,

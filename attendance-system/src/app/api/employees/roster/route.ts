@@ -25,7 +25,12 @@ export async function GET(request: Request) {
         shiftId: true,
       },
     });
-    return NextResponse.json(employees);
+    return NextResponse.json(employees, {
+      headers: {
+        // بيانات شبه ثابتة أثناء وردية — كاش قصير خاص بالمتصفح/الكشك
+        "Cache-Control": "private, max-age=30, stale-while-revalidate=90",
+      },
+    });
   } catch {
     return NextResponse.json(
       { error: "فشل تحميل قائمة الموظفين" },

@@ -14,7 +14,7 @@ import {
 } from "@/lib/kiosk-scanner-types";
 import { useKioskCamera } from "@/hooks/use-kiosk-camera";
 import { useKioskAttendanceApi } from "@/hooks/use-kiosk-attendance-api";
-import { captureVideoFrame } from "@/lib/photo-capture";
+import { captureVideoFrameBlob } from "@/lib/photo-capture";
 
 const SUCCESS_RESET_MS = 5000;
 const BLOCKED_RESET_MS = 5000;
@@ -65,6 +65,15 @@ export function useKioskPhotoScanner(mode: KioskMode) {
   const [selectedShiftId, setSelectedShiftId] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const resetTimerRef = useRef<number | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
+  const clearPreviewUrl = useCallback(() => {
+    if (previewUrlRef.current?.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = null;
+    setPreviewUrl(null);
+  }, []);
 
   const scheduleReset = useCallback((fn: () => void, delay: number) => {
     if (resetTimerRef.current !== null) {
@@ -78,10 +87,10 @@ export function useKioskPhotoScanner(mode: KioskMode) {
 
   const resetScanner = useCallback(() => {
     setResult(null);
-    setPreviewUrl(null);
+    clearPreviewUrl();
     setState("scanning");
     setStatusText(labels.subtitle);
-  }, [labels.subtitle]);
+  }, [clearPreviewUrl, labels.subtitle]);
 
   // جلب حالة اليوم مبكراً عند اختيار الاسم حتى لا ينتظرها المستخدم عند الإرسال
   useEffect(() => {
@@ -155,15 +164,17 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     setState("processing");
     setStatusText("جاري التقاط الصورة وإرسالها...");
 
-    const imageDataUrl = await captureVideoFrame(videoRef.current);
-    if (!imageDataUrl) {
+    const captured = await captureVideoFrameBlob(videoRef.current);
+    if (!captured) {
       setState("scanning");
       setStatusText(labels.subtitle);
       toast.error("تعذر التقاط الصورة — تأكد من الكاميرا");
       return;
     }
 
-    setPreviewUrl(imageDataUrl);
+    clearPreviewUrl();
+    previewUrlRef.current = captured.previewUrl;
+    setPreviewUrl(captured.previewUrl);
 
     try {
       const today = await getTodayStatus(selectedEmployeeId);
@@ -179,7 +190,7 @@ export function useKioskPhotoScanner(mode: KioskMode) {
       const data = await submitPhotoAttendance(
         selectedEmployeeId,
         selectedShiftId,
-        imageDataUrl
+        captured.blob
       );
 
       setResult(data);
@@ -187,7 +198,7 @@ export function useKioskPhotoScanner(mode: KioskMode) {
       setStatusText(data.message);
       setSelectedEmployeeId("");
       // الإبقاء على الشفت المختار لتسريع تسجيل الموظف التالي في نفس الشفت
-      setPreviewUrl(null);
+      clearPreviewUrl();
       navigator.vibrate?.(60);
       scheduleReset(resetScanner, SUCCESS_RESET_MS);
     } catch (error) {
@@ -198,7 +209,7 @@ export function useKioskPhotoScanner(mode: KioskMode) {
       toast.error(error instanceof Error ? error.message : "فشل الإرسال");
       navigator.vibrate?.([40, 60, 40]);
       scheduleReset(() => {
-        setPreviewUrl(null);
+        clearPreviewUrl();
         setState("scanning");
         setStatusText(labels.subtitle);
       }, 3000);
@@ -214,6 +225,7 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     showBlockedMessage,
     resetScanner,
     scheduleReset,
+    clearPreviewUrl,
     labels.subtitle,
   ]);
 
@@ -267,6 +279,9 @@ export function useKioskPhotoScanner(mode: KioskMode) {
       cancelled = true;
       if (resetTimerRef.current !== null) {
         window.clearTimeout(resetTimerRef.current);
+      }
+      if (previewUrlRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrlRef.current);
       }
       releaseCamera();
     };

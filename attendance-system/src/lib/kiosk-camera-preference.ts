@@ -43,7 +43,8 @@ export function buildCameraVideoConstraints(
 ): MediaTrackConstraints {
   return {
     facingMode: facingMode ?? getKioskCameraFacing(),
-    width: { ideal: 1280 },
+    // أقل من Full HD يكفي للمعاينة؛ الالتقاط يُعاد تحجيمه إلى 960 أصلاً
+    width: { ideal: 960 },
     height: { ideal: 720 },
   };
 }
