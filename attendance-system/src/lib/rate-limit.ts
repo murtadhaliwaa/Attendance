@@ -128,11 +128,12 @@ export async function checkRateLimit(
 
   if (
     !warnedMissingUpstash &&
-    process.env.NODE_ENV === "production"
+    process.env.NODE_ENV === "production" &&
+    process.env.RATE_LIMIT_USE_DB?.trim()
   ) {
     warnedMissingUpstash = true;
     console.warn(
-      "UPSTASH_REDIS_REST_* غير مُعدّ — يُستخدم حدّ المعدّل في الذاكرة. للكشك المتعدد المثيلات أضف Upstash."
+      "RATE_LIMIT_USE_DB مفعّل بدون Upstash — حدّ المعدّل عبر PostgreSQL أبطأ. للخطة المجانية اترك RATE_LIMIT_USE_DB فارغاً."
     );
   }
 

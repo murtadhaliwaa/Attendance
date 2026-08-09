@@ -122,9 +122,9 @@ function main() {
     !!process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   if (hasUpstash) {
     console.log("   Upstash rate limit: ✓");
-  } else if (isProduction) {
-    console.warn(
-      "⚠️  UPSTASH_REDIS_REST_* ناقص — حدّ المعدّل في الذاكرة فقط. للكشك على Vercel يُفضّل Upstash (أسرع من RATE_LIMIT_USE_DB)"
+  } else {
+    console.log(
+      "   Upstash: غير مُعدّ (اختياري) — حدّ المعدّل في الذاكرة مجاناً بدون اشتراك"
     );
   }
 
