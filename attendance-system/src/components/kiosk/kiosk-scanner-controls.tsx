@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState, type FocusEvent, type PointerEvent } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import { Camera, Check, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,28 +55,9 @@ export function KioskScannerControls({
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const selectingRef = useRef(false);
 
-  function scrollFieldIntoView(target: HTMLElement) {
-    // انتظر فتح الكيبورد ثم حرّك الحقل ليظهر فوقه
-    window.setTimeout(() => {
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "nearest",
-      });
-    }, 150);
-    window.setTimeout(() => {
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "nearest",
-      });
-    }, 350);
-  }
-
-  function handleSearchFocus(event: FocusEvent<HTMLInputElement>) {
+  function handleSearchFocus() {
     setSuggestionsOpen(true);
     onFormFocusChange?.(true);
-    scrollFieldIntoView(event.currentTarget);
   }
 
   function handleSearchBlur() {
@@ -160,6 +147,13 @@ export function KioskScannerControls({
     selectEmployee(employee);
   }
 
+  function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const firstMatch = filteredRoster[0];
+    if (firstMatch) selectEmployee(firstMatch);
+  }
+
   function clearSelection() {
     onEmployeeChange("");
     setEmployeeSearch("");
@@ -181,7 +175,7 @@ export function KioskScannerControls({
             onValueChange={handleShiftChange}
             disabled={shifts.length === 0}
           >
-            <SelectTrigger className="h-10 w-full rounded-lg text-xs sm:h-11 sm:rounded-xl sm:text-sm [@media(max-height:700px)]:h-9">
+            <SelectTrigger className="h-11 w-full rounded-lg text-sm sm:rounded-xl [@media(max-height:700px)]:h-10">
               <SelectValue placeholder="اختر الشفت">
                 {selectedShiftLabel}
               </SelectValue>
@@ -202,7 +196,7 @@ export function KioskScannerControls({
             ٢. اختر اسمك
           </p>
           <div className="relative shrink-0">
-            <Search className="pointer-events-none absolute top-1/2 right-2.5 z-10 size-3.5 -translate-y-1/2 text-text-muted sm:right-3 sm:size-4" />
+            <Search className="pointer-events-none absolute top-1/2 right-3 z-10 size-4 -translate-y-1/2 text-text-muted" />
             <Input
               aria-label="ابحث عن اسمك"
               aria-autocomplete="list"
@@ -229,18 +223,20 @@ export function KioskScannerControls({
               onChange={(event) => handleSearchChange(event.target.value)}
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
+              onKeyDown={handleSearchKeyDown}
               disabled={!selectedShiftId || rosterLoading}
-              className="h-10 rounded-lg border-bg-border bg-bg-card/80 pr-9 pl-9 text-xs sm:h-10 sm:rounded-xl sm:pr-10 sm:pl-10 sm:text-sm [@media(max-height:700px)]:h-9"
+              // 16 بكسل على الموبايل يمنع تكبير iOS التلقائي عند التركيز
+              className="h-11 rounded-lg border-bg-border bg-bg-card/80 pr-10 pl-11 text-base sm:h-11 sm:rounded-xl sm:text-sm [@media(max-height:700px)]:h-10"
             />
             {(employeeSearch || selectedEmployeeId) && (
               <button
                 type="button"
                 aria-label="مسح الاسم"
-                className="absolute top-1/2 left-2.5 z-10 -translate-y-1/2 rounded-md p-0.5 text-text-muted hover:text-text-primary"
+                className="absolute top-1/2 left-0 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:text-text-primary"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={clearSelection}
               >
-                <X className="size-3.5 sm:size-4" />
+                <X className="size-4" />
               </button>
             )}
           </div>
@@ -277,7 +273,7 @@ export function KioskScannerControls({
                     role="option"
                     aria-selected={selectedEmployeeId === employee.id}
                     className={cn(
-                      "flex w-full items-center justify-between gap-2 border-b border-bg-border/60 px-3 py-2.5 text-right text-xs last:border-b-0 hover:bg-bg-elevated active:bg-bg-elevated sm:text-sm",
+                      "flex min-h-11 w-full items-center justify-between gap-2 border-b border-bg-border/60 px-3 py-2 text-right text-sm last:border-b-0 hover:bg-bg-elevated active:bg-bg-elevated",
                       selectedEmployeeId === employee.id &&
                         "bg-emerald-500/10 text-emerald-100"
                     )}

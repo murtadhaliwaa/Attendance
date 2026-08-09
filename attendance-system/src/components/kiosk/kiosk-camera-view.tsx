@@ -42,6 +42,8 @@ export function KioskCameraView({
           "[@media(max-height:700px)]:h-[clamp(7rem,26svh,12rem)]",
           "[@media(max-height:600px)]:h-[clamp(6rem,22svh,10rem)]",
           "lg:aspect-[4/3] lg:h-auto lg:max-h-full lg:min-h-[220px] lg:flex-1",
+          // في الوضع الأفقي للهاتف تملأ الكاميرا عمودها بدل ارتفاع ثابت
+          "[@media(orientation:landscape)and(max-height:540px)]:h-full [@media(orientation:landscape)and(max-height:540px)]:min-h-0 [@media(orientation:landscape)and(max-height:540px)]:flex-1",
           accentRing
         )}
       >

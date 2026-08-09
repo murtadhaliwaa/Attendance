@@ -10,9 +10,12 @@ export function useKioskAttendanceApi(mode: KioskMode) {
     Map<string, { data: TodayStatus; ts: number }>
   >(new Map());
 
+  // الخادم يبقى مرجع الحقيقة؛ هذه النافذة فقط لتجنّب طلب مكرر أثناء نفس التسجيل
+  const TODAY_STATUS_TTL_MS = 15_000;
+
   const getTodayStatus = useCallback(async (employeeId: string) => {
     const cached = todayStatusCacheRef.current.get(employeeId);
-    if (cached && Date.now() - cached.ts < 2000) {
+    if (cached && Date.now() - cached.ts < TODAY_STATUS_TTL_MS) {
       return cached.data;
     }
 
@@ -30,6 +33,18 @@ export function useKioskAttendanceApi(mode: KioskMode) {
     });
     return data;
   }, []);
+
+  /** تسخين الكاش عند اختيار الاسم — يتجاهل الأخطاء لأن الإرسال سيعيد المحاولة */
+  const prefetchTodayStatus = useCallback(
+    async (employeeId: string) => {
+      try {
+        await getTodayStatus(employeeId);
+      } catch {
+        // لا شيء: الفحص الحقيقي يحدث عند الإرسال
+      }
+    },
+    [getTodayStatus]
+  );
 
   const loadRoster = useCallback(async (options?: { photoOnly?: boolean }) => {
     const path = options?.photoOnly
@@ -83,6 +98,7 @@ export function useKioskAttendanceApi(mode: KioskMode) {
     loadRoster,
     loadShifts,
     getTodayStatus,
+    prefetchTodayStatus,
     submitPhotoAttendance,
     todayStatusCacheRef,
   };

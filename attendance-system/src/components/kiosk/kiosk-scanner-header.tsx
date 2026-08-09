@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LogIn, LogOut } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { KioskTabletExitButton } from "@/components/kiosk/kiosk-tablet-exit";
+import { KioskClock } from "@/components/kiosk/kiosk-clock";
 import { useKioskTabletMode } from "@/hooks/use-kiosk-tablet-mode";
 import type { KioskModeLabels } from "@/lib/kiosk-types";
 import { cn } from "@/lib/utils";
@@ -11,7 +12,6 @@ import { cn } from "@/lib/utils";
 interface KioskScannerHeaderProps {
   isCheckin: boolean;
   labels: KioskModeLabels;
-  currentTime: string;
   accentClockClass: string;
   accentActionClass: string;
 }
@@ -19,7 +19,6 @@ interface KioskScannerHeaderProps {
 export function KioskScannerHeader({
   isCheckin,
   labels,
-  currentTime,
   accentClockClass,
   accentActionClass,
 }: KioskScannerHeaderProps) {
@@ -50,16 +49,7 @@ export function KioskScannerHeader({
         </div>
 
         <div className="flex justify-center">
-          <p
-            dir="ltr"
-            className={cn(
-              "truncate rounded-lg border px-2.5 py-1 text-center font-mono text-sm font-bold tracking-wide tabular-nums shadow-sm sm:rounded-xl sm:px-5 sm:py-2 sm:text-xl",
-              "[@media(max-height:700px)]:px-2 [@media(max-height:700px)]:py-0.5 [@media(max-height:700px)]:text-sm",
-              accentClockClass
-            )}
-          >
-            {currentTime}
-          </p>
+          <KioskClock className={accentClockClass} />
         </div>
 
         <div className="flex w-full min-w-0 justify-end">

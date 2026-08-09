@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import type { KioskMode } from "@/lib/kiosk-types";
 import { useKioskPhotoScanner } from "@/hooks/use-kiosk-photo-scanner";
-import { useVisualViewportHeight } from "@/hooks/use-visual-viewport-height";
+import { useKeyboardOpen } from "@/hooks/use-visual-viewport-height";
 import { KioskResultPanel } from "@/components/kiosk/kiosk-result-panel";
 import { KioskScannerHeader } from "@/components/kiosk/kiosk-scanner-header";
 import { KioskCameraView } from "@/components/kiosk/kiosk-camera-view";
@@ -31,9 +31,8 @@ interface KioskScannerProps {
 
 export function KioskScanner({ mode }: KioskScannerProps) {
   const scanner = useKioskPhotoScanner(mode);
-  const { keyboardOpen } = useVisualViewportHeight(true);
+  const keyboardOpen = useKeyboardOpen();
   const [formFocused, setFormFocused] = useState(false);
-  // أخفِ الكاميرا فقط مع الكيبورد الفعلي حتى لا يتحرّك التخطيط أثناء اختيار الاسم
   const compactForKeyboard = keyboardOpen || formFocused;
 
   const {
@@ -45,7 +44,6 @@ export function KioskScanner({ mode }: KioskScannerProps) {
     state,
     statusText,
     result,
-    currentTime,
     roster,
     shifts,
     rosterLoading,
@@ -88,7 +86,6 @@ export function KioskScanner({ mode }: KioskScannerProps) {
       <KioskScannerHeader
         isCheckin={isCheckin}
         labels={labels}
-        currentTime={currentTime}
         accentClockClass={accentClockClass}
         accentActionClass={accentActionClass}
       />
@@ -128,11 +125,13 @@ export function KioskScanner({ mode }: KioskScannerProps) {
         </p>
 
         <CardContent className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden px-1.5 pb-1.5 sm:gap-1.5 sm:px-3 sm:pb-2">
-          <div className="flex min-h-0 flex-1 flex-col gap-1 sm:gap-2 lg:flex-row lg:items-stretch lg:overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col gap-1 sm:gap-2 lg:flex-row lg:items-stretch lg:overflow-hidden [@media(orientation:landscape)and(max-height:540px)]:flex-row [@media(orientation:landscape)and(max-height:540px)]:items-stretch [@media(orientation:landscape)and(max-height:540px)]:overflow-hidden">
             <div
               className={cn(
-                "flex flex-col gap-1 lg:min-h-0 lg:min-w-0 lg:flex-1 lg:shrink",
-                compactForKeyboard ? "hidden lg:flex" : "shrink-0"
+                "flex flex-col gap-1 lg:min-h-0 lg:min-w-0 lg:flex-1 lg:shrink [@media(orientation:landscape)and(max-height:540px)]:min-h-0 [@media(orientation:landscape)and(max-height:540px)]:min-w-0 [@media(orientation:landscape)and(max-height:540px)]:flex-1 [@media(orientation:landscape)and(max-height:540px)]:shrink",
+                compactForKeyboard
+                  ? "hidden lg:flex [@media(orientation:landscape)and(max-height:540px)]:flex"
+                  : "shrink-0"
               )}
             >
               <KioskCameraView
@@ -156,7 +155,7 @@ export function KioskScanner({ mode }: KioskScannerProps) {
               </div>
             )}
 
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:max-w-md lg:shrink-0">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:max-w-md lg:shrink-0 [@media(orientation:landscape)and(max-height:540px)]:max-w-[22rem] [@media(orientation:landscape)and(max-height:540px)]:shrink-0">
               <KioskScannerControls
                 accentActionClass={accentActionClass}
                 roster={roster}

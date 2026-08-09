@@ -1,11 +1,14 @@
-/** التقاط إطار من عنصر الفيديو كـ data URL (JPEG) */
-export function captureVideoFrame(
+/**
+ * التقاط إطار من عنصر الفيديو كـ data URL (JPEG).
+ * يستخدم toBlob غير المتزامن حتى لا تتجمّد الواجهة على الأجهزة الضعيفة.
+ */
+export async function captureVideoFrame(
   video: HTMLVideoElement,
-  quality = 0.85
-): string | null {
+  // 960 بكسل تكفي لمراجعة بشرية وتقلّل حجم الرفع إلى أقل من النصف
+  { quality = 0.72, maxWidth = 960 }: { quality?: number; maxWidth?: number } = {}
+): Promise<string | null> {
   if (!video.videoWidth || !video.videoHeight) return null;
 
-  const maxWidth = 1280;
   let width = video.videoWidth;
   let height = video.videoHeight;
 
@@ -22,5 +25,16 @@ export function captureVideoFrame(
   if (!ctx) return null;
 
   ctx.drawImage(video, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", quality);
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/jpeg", quality);
+  });
+  if (!blob) return canvas.toDataURL("image/jpeg", quality);
+
+  return new Promise<string | null>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(blob);
+  });
 }

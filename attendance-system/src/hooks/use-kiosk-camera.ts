@@ -16,6 +16,7 @@ export function useKioskCamera() {
     typeof window !== "undefined" ? getKioskCameraFacing() : "user"
   );
   const startCameraRef = useRef<(() => Promise<void>) | null>(null);
+  const wasStreamingRef = useRef(false);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -133,6 +134,28 @@ export function useKioskCamera() {
         onFacingChanged
       );
   }, []);
+
+  // إيقاف البث عند إخفاء التبويب يوفّر البطارية ويحرّر الكاميرا لتطبيق آخر
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        if (streamRef.current) {
+          wasStreamingRef.current = true;
+          stopCamera();
+        }
+        return;
+      }
+
+      if (wasStreamingRef.current) {
+        wasStreamingRef.current = false;
+        void startCameraRef.current?.();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [stopCamera]);
 
   return {
     videoRef,

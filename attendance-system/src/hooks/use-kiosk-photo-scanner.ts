@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { KIOSK_MODE_LABELS, type KioskMode } from "@/lib/kiosk-types";
 import {
@@ -51,6 +51,7 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     loadRoster,
     loadShifts,
     getTodayStatus,
+    prefetchTodayStatus,
     submitPhotoAttendance,
   } = useKioskAttendanceApi(mode);
 
@@ -62,18 +63,17 @@ export function useKioskPhotoScanner(mode: KioskMode) {
   const [rosterLoading, setRosterLoading] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [selectedShiftId, setSelectedShiftId] = useState("");
-  const [currentTime, setCurrentTime] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const resetTimerRef = useRef<number | null>(null);
 
-  const updateClock = useCallback(() => {
-    setCurrentTime(
-      new Date().toLocaleTimeString("ar-SA", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      })
-    );
+  const scheduleReset = useCallback((fn: () => void, delay: number) => {
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+    resetTimerRef.current = window.setTimeout(() => {
+      resetTimerRef.current = null;
+      fn();
+    }, delay);
   }, []);
 
   const resetScanner = useCallback(() => {
@@ -82,6 +82,12 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     setState("scanning");
     setStatusText(labels.subtitle);
   }, [labels.subtitle]);
+
+  // جلب حالة اليوم مبكراً عند اختيار الاسم حتى لا ينتظرها المستخدم عند الإرسال
+  useEffect(() => {
+    if (!selectedEmployeeId) return;
+    void prefetchTodayStatus(selectedEmployeeId);
+  }, [selectedEmployeeId, prefetchTodayStatus]);
 
   const retryCamera = useCallback(async () => {
     setState("loading");
@@ -114,9 +120,9 @@ export function useKioskPhotoScanner(mode: KioskMode) {
       });
       setState("success");
       setStatusText(message);
-      setTimeout(resetScanner, BLOCKED_RESET_MS);
+      scheduleReset(resetScanner, BLOCKED_RESET_MS);
     },
-    [mode, resetScanner]
+    [mode, resetScanner, scheduleReset]
   );
 
   const handleCaptureAndSubmit = useCallback(async () => {
@@ -146,15 +152,18 @@ export function useKioskPhotoScanner(mode: KioskMode) {
       return;
     }
 
-    const imageDataUrl = captureVideoFrame(videoRef.current);
+    setState("processing");
+    setStatusText("جاري التقاط الصورة وإرسالها...");
+
+    const imageDataUrl = await captureVideoFrame(videoRef.current);
     if (!imageDataUrl) {
+      setState("scanning");
+      setStatusText(labels.subtitle);
       toast.error("تعذر التقاط الصورة — تأكد من الكاميرا");
       return;
     }
 
     setPreviewUrl(imageDataUrl);
-    setState("processing");
-    setStatusText("جاري التقاط الصورة وإرسالها...");
 
     try {
       const today = await getTodayStatus(selectedEmployeeId);
@@ -179,14 +188,17 @@ export function useKioskPhotoScanner(mode: KioskMode) {
       setSelectedEmployeeId("");
       // الإبقاء على الشفت المختار لتسريع تسجيل الموظف التالي في نفس الشفت
       setPreviewUrl(null);
-      setTimeout(resetScanner, SUCCESS_RESET_MS);
+      navigator.vibrate?.(60);
+      scheduleReset(resetScanner, SUCCESS_RESET_MS);
     } catch (error) {
       setState("error");
       setStatusText(
         error instanceof Error ? error.message : "فشل إرسال الصورة"
       );
       toast.error(error instanceof Error ? error.message : "فشل الإرسال");
-      setTimeout(() => {
+      navigator.vibrate?.([40, 60, 40]);
+      scheduleReset(() => {
+        setPreviewUrl(null);
         setState("scanning");
         setStatusText(labels.subtitle);
       }, 3000);
@@ -201,18 +213,17 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     submitPhotoAttendance,
     showBlockedMessage,
     resetScanner,
+    scheduleReset,
     labels.subtitle,
   ]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function init() {
+    // القائمة والكاميرا تُحمّلان بالتوازي حتى لا ينتظر المستخدم إذن الكاميرا
+    async function loadData() {
       setRosterLoading(true);
       try {
-        await startCamera();
-        if (cancelled) return;
-
         const [rosterData, shiftData] = await Promise.all([
           loadRoster({ photoOnly: true }),
           loadShifts(),
@@ -224,29 +235,42 @@ export function useKioskPhotoScanner(mode: KioskMode) {
         if (shiftData.length === 1) {
           setSelectedShiftId(shiftData[0]!.id);
         }
-        setState("scanning");
-        setStatusText(labels.subtitle);
       } catch (error) {
         if (cancelled) return;
-        setState("error");
-        setStatusText(
-          error instanceof Error ? error.message : "فشل تهيئة الكشك"
+        toast.error(
+          error instanceof Error ? error.message : "فشل تحميل بيانات الكشك"
         );
       } finally {
         if (!cancelled) setRosterLoading(false);
       }
     }
 
-    void init();
-    updateClock();
-    const clockId = setInterval(updateClock, 1000);
+    async function initCamera() {
+      try {
+        await startCamera();
+        if (cancelled) return;
+        setState("scanning");
+        setStatusText(labels.subtitle);
+      } catch (error) {
+        if (cancelled) return;
+        setState("error");
+        setStatusText(
+          error instanceof Error ? error.message : "فشل تشغيل الكاميرا"
+        );
+      }
+    }
+
+    void loadData();
+    void initCamera();
 
     return () => {
       cancelled = true;
-      clearInterval(clockId);
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
       releaseCamera();
     };
-  }, [labels.subtitle, loadRoster, loadShifts, releaseCamera, startCamera, updateClock]);
+  }, [labels.subtitle, loadRoster, loadShifts, releaseCamera, startCamera]);
 
   return {
     isCheckin,
@@ -257,7 +281,6 @@ export function useKioskPhotoScanner(mode: KioskMode) {
     state,
     statusText,
     result,
-    currentTime,
     roster,
     shifts,
     rosterLoading,

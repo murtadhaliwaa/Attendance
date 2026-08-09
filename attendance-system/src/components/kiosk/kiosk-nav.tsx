@@ -10,7 +10,10 @@ import {
   MonitorSmartphone,
 } from "lucide-react";
 import { useKioskTabletMode } from "@/hooks/use-kiosk-tablet-mode";
-import { useVisualViewportHeight } from "@/hooks/use-visual-viewport-height";
+import {
+  KeyboardOpenProvider,
+  useVisualViewportHeight,
+} from "@/hooks/use-visual-viewport-height";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/components/dashboard/role-context";
 import {
@@ -216,47 +219,46 @@ export function KioskShell({
     useVisualViewportHeight(isScanner);
 
   return (
-    <div
-      className={cn(
-        "flex bg-bg-page",
-        isScanner
-          ? "supports-[height:100svh]:h-svh supports-[height:100svh]:max-h-svh"
-          : "min-h-screen",
-        isScanner && (keyboardOpen ? "overflow-y-auto" : "overflow-hidden"),
-        isScanner && !viewportHeight && "h-dvh max-h-dvh"
-      )}
-      style={
-        isScanner && viewportHeight
-          ? {
-              height: viewportHeight,
-              maxHeight: viewportHeight,
-              transform: offsetTop ? `translateY(${offsetTop}px)` : undefined,
-            }
-          : undefined
-      }
-      data-keyboard-open={keyboardOpen ? "true" : "false"}
-    >
-      {!immersiveTablet && <KioskSidebar loggedIn={loggedIn} />}
+    <KeyboardOpenProvider value={keyboardOpen}>
       <div
         className={cn(
-          "flex min-w-0 flex-1 flex-col",
+          "flex bg-bg-page",
           isScanner
-            ? "h-full min-h-0 overflow-hidden"
+            ? "overflow-hidden supports-[height:100svh]:h-svh supports-[height:100svh]:max-h-svh"
             : "min-h-screen",
-          !hideMobileNav && "pb-16 lg:pb-0"
+          isScanner && !viewportHeight && "h-dvh max-h-dvh"
         )}
+        style={
+          isScanner && viewportHeight
+            ? {
+                height: viewportHeight,
+                maxHeight: viewportHeight,
+                transform: offsetTop ? `translateY(${offsetTop}px)` : undefined,
+              }
+            : undefined
+        }
+        data-keyboard-open={keyboardOpen ? "true" : "false"}
       >
-        <main
+        {!immersiveTablet && <KioskSidebar loggedIn={loggedIn} />}
+        <div
           className={cn(
-            "flex min-w-0 flex-col",
-            isScanner ? "h-full min-h-0 flex-1" : "flex-1"
+            "flex min-w-0 flex-1 flex-col",
+            isScanner ? "h-full min-h-0 overflow-hidden" : "min-h-screen",
+            !hideMobileNav && "pb-16 lg:pb-0"
           )}
         >
-          {children}
-        </main>
+          <main
+            className={cn(
+              "flex min-w-0 flex-col",
+              isScanner ? "h-full min-h-0 flex-1" : "flex-1"
+            )}
+          >
+            {children}
+          </main>
+        </div>
+        {!hideMobileNav &&
+          (loggedIn ? <KioskMobileNavLoggedIn /> : <KioskMobileNavGuest />)}
       </div>
-      {!hideMobileNav &&
-        (loggedIn ? <KioskMobileNavLoggedIn /> : <KioskMobileNavGuest />)}
-    </div>
+    </KeyboardOpenProvider>
   );
 }

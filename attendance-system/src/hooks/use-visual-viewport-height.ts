@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 /**
  * يتتبع الارتفاع المرئي الفعلي (فوق لوحة المفاتيح على الموبايل)
@@ -40,4 +40,13 @@ export function useVisualViewportHeight(enabled: boolean) {
   }, [enabled]);
 
   return { height, offsetTop, keyboardOpen };
+}
+
+const KeyboardOpenContext = createContext(false);
+
+/** يشارك حالة الكيبورد من غلاف الكشك حتى لا يتكرر مستمع visualViewport */
+export const KeyboardOpenProvider = KeyboardOpenContext.Provider;
+
+export function useKeyboardOpen() {
+  return useContext(KeyboardOpenContext);
 }

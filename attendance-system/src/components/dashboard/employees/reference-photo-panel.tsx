@@ -121,9 +121,13 @@ export function ReferencePhotoPanel({
     };
   }, [active, existingPhotoPath, photoDataUrl]);
 
-  function handleCapture() {
+  async function handleCapture() {
     if (!videoRef.current) return;
-    const frame = captureVideoFrame(videoRef.current);
+    // الصورة المرجعية تُقارَن بصرياً، لذا تبقى بدقة أعلى من صور التسجيل اليومية
+    const frame = await captureVideoFrame(videoRef.current, {
+      quality: 0.85,
+      maxWidth: 1280,
+    });
     if (!frame) {
       setCameraError("تعذر التقاط الصورة");
       return;
@@ -250,7 +254,7 @@ export function ReferencePhotoPanel({
             type="button"
             className="w-full"
             disabled={!cameraReady}
-            onClick={handleCapture}
+            onClick={() => void handleCapture()}
           >
             <Camera className="size-4" />
             التقاط الصورة المرجعية
