@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireKioskAuth } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 
+export const preferredRegion = "fra1";
+
 export async function GET(request: Request) {
   const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;

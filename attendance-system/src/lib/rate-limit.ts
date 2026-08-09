@@ -12,6 +12,7 @@ const distributedLimiters = new Map<string, Ratelimit>();
 
 /** يُعطّل محاولات قاعدة البيانات مؤقتاً بعد فشل (مثلاً الجدول غير موجود) */
 let dbRateLimitDisabledUntil = 0;
+let warnedMissingUpstash = false;
 
 function checkRateLimitInMemory(
   key: string,
@@ -65,6 +66,13 @@ export function isDistributedRateLimitEnabled(): boolean {
   );
 }
 
+function shouldUseDbRateLimit(): boolean {
+  // افتراضياً لا نضرب PostgreSQL في كل طلب صورة — أبطأ مسار بدون Upstash.
+  // فعّل RATE_LIMIT_USE_DB=true فقط إن احتجت حدّاً موزّعاً بلا Redis.
+  const flag = process.env.RATE_LIMIT_USE_DB?.trim().toLowerCase();
+  return flag === "1" || flag === "true" || flag === "yes";
+}
+
 /**
  * حدّ معدّل ذرّي عبر PostgreSQL — يعمل على بيئات serverless (Vercel)
  * حيث لا تدوم الذاكرة بين الطلبات. يُعيد null عند تعذّر استخدام القاعدة.
@@ -96,7 +104,6 @@ async function checkRateLimitInDb(
     const count = Number(rows[0]?.count ?? 1);
     return count <= limit;
   } catch (error) {
-    // الجدول غير موجود أو خطأ اتصال — عطّل القاعدة دقيقة وارجع للذاكرة
     console.error("DB rate limit failed, falling back to memory:", error);
     dbRateLimitDisabledUntil = Date.now() + 60_000;
     return null;
@@ -104,8 +111,9 @@ async function checkRateLimitInDb(
 }
 
 /**
- * يستخدم Upstash عند التهيئة، وإلا PostgreSQL (مناسب لـ serverless)،
- * وإلا يعود للذاكرة المحلية كحل أخير.
+ * 1) Upstash إن وُجد (الأفضل للإنتاج الموزّع)
+ * 2) ذاكرة العملية — سريع ومناسب للكشك عند غياب Redis
+ * 3) PostgreSQL فقط عند RATE_LIMIT_USE_DB=true
  */
 export async function checkRateLimit(
   key: string,
@@ -118,8 +126,20 @@ export async function checkRateLimit(
     return success;
   }
 
-  const dbResult = await checkRateLimitInDb(key, limit, windowMs);
-  if (dbResult !== null) return dbResult;
+  if (
+    !warnedMissingUpstash &&
+    process.env.NODE_ENV === "production"
+  ) {
+    warnedMissingUpstash = true;
+    console.warn(
+      "UPSTASH_REDIS_REST_* غير مُعدّ — يُستخدم حدّ المعدّل في الذاكرة. للكشك المتعدد المثيلات أضف Upstash."
+    );
+  }
+
+  if (shouldUseDbRateLimit()) {
+    const dbResult = await checkRateLimitInDb(key, limit, windowMs);
+    if (dbResult !== null) return dbResult;
+  }
 
   return checkRateLimitInMemory(key, limit, windowMs);
 }

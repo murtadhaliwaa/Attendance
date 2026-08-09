@@ -117,6 +117,17 @@ function main() {
     );
   }
 
+  const hasUpstash =
+    !!process.env.UPSTASH_REDIS_REST_URL?.trim() &&
+    !!process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+  if (hasUpstash) {
+    console.log("   Upstash rate limit: ✓");
+  } else if (isProduction) {
+    console.warn(
+      "⚠️  UPSTASH_REDIS_REST_* ناقص — حدّ المعدّل في الذاكرة فقط. للكشك على Vercel يُفضّل Upstash (أسرع من RATE_LIMIT_USE_DB)"
+    );
+  }
+
   const authPassword = process.env.AUTH_SETUP_PASSWORD?.trim();
   if (!authPassword || authPassword === WEAK_DEFAULT) {
     console.warn(

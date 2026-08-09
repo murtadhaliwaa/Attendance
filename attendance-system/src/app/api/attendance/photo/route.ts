@@ -8,6 +8,8 @@ import {
 import type { PhotoUploadSource } from "@/lib/photo-storage";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
+export const preferredRegion = "fra1";
+
 async function readPhotoPayload(request: Request): Promise<{
   employeeId: string;
   shiftId: string;

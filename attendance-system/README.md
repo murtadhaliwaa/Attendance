@@ -62,7 +62,8 @@ npm run dev
 | `CRON_SECRET` | إلزامي في الإنتاج — لحماية cron تنظيف الصور |
 | `SUPABASE_S3_ACCESS_KEY_ID` · `SUPABASE_S3_SECRET_ACCESS_KEY` · `SUPABASE_S3_REGION` | رفع الصور عبر S3 |
 | `AUTH_SETUP_PASSWORD` | فقط محلياً عند إنشاء الحسابات — ليست لمتغيرات Runtime العامة |
-| `UPSTASH_REDIS_REST_*` | اختياري — rate limit موزع |
+| `UPSTASH_REDIS_REST_URL` · `UPSTASH_REDIS_REST_TOKEN` | **موصى به في الإنتاج** — حدّ معدّل موزّع سريع بدون ضرب PostgreSQL |
+| `RATE_LIMIT_USE_DB` | اختياري (`true`) — يستخدم جدول RateLimit عند غياب Upstash (أبطأ) |
 
 ## إعداد Storage (صور الحضور)
 

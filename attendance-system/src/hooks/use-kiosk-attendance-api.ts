@@ -2,6 +2,12 @@
 
 import { useCallback, useRef } from "react";
 import { kioskJson } from "@/lib/kiosk-client";
+import {
+  readCachedRoster,
+  readCachedShifts,
+  writeCachedRoster,
+  writeCachedShifts,
+} from "@/lib/kiosk-data-cache";
 import type { AttendanceResult, TodayStatus } from "@/lib/kiosk-scanner-types";
 import type { KioskMode } from "@/lib/kiosk-types";
 
@@ -47,22 +53,27 @@ export function useKioskAttendanceApi(mode: KioskMode) {
   );
 
   const loadRoster = useCallback(async (options?: { photoOnly?: boolean }) => {
-    const path = options?.photoOnly
+    const photoOnly = !!options?.photoOnly;
+    type RosterRow = {
+      id: string;
+      name: string;
+      employeeCode: string;
+      department: string;
+      shiftId: string | null;
+    };
+
+    const cached = readCachedRoster<RosterRow[]>(photoOnly);
+    if (cached) return cached;
+
+    const path = photoOnly
       ? "/api/employees/roster?for=photo"
       : "/api/employees/roster";
-    const { res, data } = await kioskJson<
-      Array<{
-        id: string;
-        name: string;
-        employeeCode: string;
-        department: string;
-        shiftId: string | null;
-      }>
-    >(path);
+    const { res, data } = await kioskJson<RosterRow[]>(path);
 
     if (!res.ok) {
       throw new Error("فشل تحميل قائمة الموظفين");
     }
+    writeCachedRoster(photoOnly, data);
     return data;
   }, []);
 
@@ -90,13 +101,22 @@ export function useKioskAttendanceApi(mode: KioskMode) {
   );
 
   const loadShifts = useCallback(async () => {
-    const { res, data } = await kioskJson<
-      Array<{ id: string; name: string; startTime: string; endTime: string }>
-    >("/api/schedules/kiosk");
+    type ShiftRow = {
+      id: string;
+      name: string;
+      startTime: string;
+      endTime: string;
+    };
+
+    const cached = readCachedShifts<ShiftRow[]>();
+    if (cached) return cached;
+
+    const { res, data } = await kioskJson<ShiftRow[]>("/api/schedules/kiosk");
 
     if (!res.ok) {
       throw new Error("فشل تحميل الشفتات");
     }
+    writeCachedShifts(data);
     return data;
   }, []);
 

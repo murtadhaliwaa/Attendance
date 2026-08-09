@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireKioskAuth } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 
+export const preferredRegion = "fra1";
+
 // قائمة الموظفين النشطين للكشك (مع فلترة الصورة المرجعية عند ?for=photo).
 export async function GET(request: Request) {
   const kioskError = await requireKioskAuth(request);

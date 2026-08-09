@@ -5,6 +5,8 @@ import { getTodayDate } from "@/lib/app-timezone";
 import { formatTimeAr } from "@/lib/attendance-utils";
 import { MAX_PHOTO_SUBMIT_ATTEMPTS } from "@/lib/photo-attendance-limits";
 
+export const preferredRegion = "fra1";
+
 export async function GET(request: Request) {
   const kioskError = await requireKioskAuth(request);
   if (kioskError) return kioskError;

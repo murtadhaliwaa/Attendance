@@ -7,6 +7,8 @@ import { getSignedPhotoUrl } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 import { toDateKey } from "@/lib/app-timezone";
 
+export const preferredRegion = "fra1";
+
 export async function GET(request: Request) {
   const auth = await requirePermission("attendance:review");
   if (auth.error) return auth.error;
@@ -52,13 +54,37 @@ export async function GET(request: Request) {
     ...(scope === "pending" ? {} : { take: 200 }),
   });
 
-  const items = [];
-
   try {
+    const paths = new Set<string>();
+    for (const record of records) {
+      if (record.employee.referencePhotoUrl) {
+        paths.add(record.employee.referencePhotoUrl);
+      }
+      if (record.checkInVerificationStatus && record.checkInPhotoUrl) {
+        paths.add(record.checkInPhotoUrl);
+      }
+      if (record.checkOutVerificationStatus && record.checkOutPhotoUrl) {
+        paths.add(record.checkOutPhotoUrl);
+      }
+    }
+
+    const signedEntries = await Promise.all(
+      Array.from(paths).map(async (path) => {
+        try {
+          return [path, await getSignedPhotoUrl(path)] as const;
+        } catch {
+          return [path, null] as const;
+        }
+      })
+    );
+    const signedByPath = new Map(signedEntries);
+
+    const items = [];
+
     for (const record of records) {
       const dateKey = toDateKey(record.date);
       const referenceUrl = record.employee.referencePhotoUrl
-        ? await getSignedPhotoUrl(record.employee.referencePhotoUrl)
+        ? signedByPath.get(record.employee.referencePhotoUrl) ?? null
         : null;
 
       if (record.checkInVerificationStatus) {
@@ -80,7 +106,7 @@ export async function GET(request: Request) {
           },
           referencePhotoUrl: referenceUrl,
           eventPhotoUrl: record.checkInPhotoUrl
-            ? await getSignedPhotoUrl(record.checkInPhotoUrl)
+            ? signedByPath.get(record.checkInPhotoUrl) ?? null
             : null,
         });
       }
@@ -104,11 +130,18 @@ export async function GET(request: Request) {
           },
           referencePhotoUrl: referenceUrl,
           eventPhotoUrl: record.checkOutPhotoUrl
-            ? await getSignedPhotoUrl(record.checkOutPhotoUrl)
+            ? signedByPath.get(record.checkOutPhotoUrl) ?? null
             : null,
         });
       }
     }
+
+    const pending = items.filter((i) => i.verificationStatus === "PENDING");
+
+    return NextResponse.json({
+      pendingCount: pending.length,
+      items: scope === "pending" ? pending : items,
+    });
   } catch (error) {
     console.error("GET /api/attendance/reviews:", error);
     return NextResponse.json(
@@ -116,11 +149,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-
-  const pending = items.filter((i) => i.verificationStatus === "PENDING");
-
-  return NextResponse.json({
-    pendingCount: pending.length,
-    items: scope === "pending" ? pending : items,
-  });
 }
