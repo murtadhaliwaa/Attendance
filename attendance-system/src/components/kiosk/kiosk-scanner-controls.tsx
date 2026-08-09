@@ -147,13 +147,13 @@ export function KioskScannerControls({
     setSuggestionsOpen(true);
   }
 
-  const showSuggestions =
-    suggestionsOpen && !!selectedShiftId && !rosterLoading;
+  // أظهر القائمة دائماً بعد اختيار الشفت حتى تملأ ارتفاع الشاشة
+  const showEmployeeList = !!selectedShiftId && !rosterLoading;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-bg-border bg-bg-elevated/80">
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-2 sm:space-y-3 sm:p-3 [@media(max-height:700px)]:space-y-1.5 [@media(max-height:700px)]:p-1.5">
-        <div className="space-y-1">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-bg-border bg-bg-elevated/80">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:gap-3 sm:p-3 [@media(max-height:700px)]:gap-1.5 [@media(max-height:700px)]:p-1.5">
+        <div className="shrink-0 space-y-1">
           <p className="text-[11px] font-medium text-text-primary sm:text-xs">
             ١. اختر الشفت
           </p>
@@ -178,16 +178,16 @@ export function KioskScannerControls({
           </Select>
         </div>
 
-        <div className="space-y-1">
-          <p className="text-[11px] font-medium text-text-primary sm:text-xs">
+        <div className="flex min-h-0 flex-1 flex-col gap-1">
+          <p className="shrink-0 text-[11px] font-medium text-text-primary sm:text-xs">
             ٢. اختر اسمك
           </p>
-          <div className="relative">
+          <div className="relative shrink-0">
             <Search className="pointer-events-none absolute top-1/2 right-2.5 z-10 size-3.5 -translate-y-1/2 text-text-muted sm:right-3 sm:size-4" />
             <Input
               aria-label="ابحث عن اسمك"
               aria-autocomplete="list"
-              aria-expanded={showSuggestions}
+              aria-expanded={showEmployeeList && suggestionsOpen}
               type="text"
               name="kiosk-employee-filter"
               autoComplete="off"
@@ -227,7 +227,7 @@ export function KioskScannerControls({
           </div>
 
           {selectedEmployee && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-100 sm:text-sm">
+            <div className="flex shrink-0 items-center gap-2 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-100 sm:text-sm">
               <Check className="size-4 shrink-0" />
               <span className="min-w-0 truncate font-medium">
                 {selectedEmployee.name}
@@ -238,11 +238,11 @@ export function KioskScannerControls({
             </div>
           )}
 
-          {showSuggestions && (
+          {showEmployeeList ? (
             <div
               role="listbox"
               aria-label="اقتراحات الأسماء"
-              className="max-h-44 overflow-y-auto overscroll-contain rounded-lg border border-bg-border bg-bg-card shadow-lg sm:max-h-56"
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border border-bg-border bg-bg-card"
             >
               {filteredRoster.length === 0 ? (
                 <p className="px-3 py-3 text-center text-xs text-text-muted sm:text-sm">
@@ -275,12 +275,18 @@ export function KioskScannerControls({
                 ))
               )}
             </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-bg-border bg-bg-card/40 px-3 text-center text-xs text-text-muted sm:text-sm">
+              {!selectedShiftId
+                ? "اختر الشفت أولاً لعرض الأسماء"
+                : "جاري تحميل الموظفين..."}
+            </div>
           )}
 
           {selectedShiftId && !rosterLoading && (
-            <div className="space-y-0.5 text-[10px] text-text-muted sm:text-[11px]">
+            <div className="shrink-0 space-y-0.5 text-[10px] text-text-muted sm:text-[11px]">
               <p>
-                {employeeSearch.trim() && !selectedEmployeeId
+                {employeeSearch.trim()
                   ? `${filteredRoster.length} نتيجة من ${shiftEmployees.length}`
                   : `${shiftEmployees.length} موظف في هذا الشفت`}
               </p>

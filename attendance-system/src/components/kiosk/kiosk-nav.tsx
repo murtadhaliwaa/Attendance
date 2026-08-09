@@ -241,9 +241,7 @@ export function KioskShell({
         className={cn(
           "flex min-w-0 flex-1 flex-col",
           isScanner
-            ? keyboardOpen
-              ? "min-h-0 overflow-y-auto overscroll-contain"
-              : "min-h-0 overflow-hidden"
+            ? "h-full min-h-0 overflow-hidden"
             : "min-h-screen",
           !hideMobileNav && "pb-16 lg:pb-0"
         )}
@@ -251,7 +249,7 @@ export function KioskShell({
         <main
           className={cn(
             "flex min-w-0 flex-col",
-            isScanner ? "h-full min-h-0" : "flex-1"
+            isScanner ? "h-full min-h-0 flex-1" : "flex-1"
           )}
         >
           {children}
